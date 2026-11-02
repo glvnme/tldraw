@@ -181,7 +181,9 @@ describe('artifacts and job status', () => {
 			body: JSON.stringify(MANIFEST),
 		})
 		expect(response.status).toBe(200)
-		expect(await (await env.MODELS!.get(`m/${MODEL_ID}/manifest.json`))!.json()).toEqual(MANIFEST)
+		expect(await (await env.MODELS!.get(`m/${MODEL_ID}/${JOB_ID}/manifest.json`))!.json()).toEqual(
+			MANIFEST
+		)
 		expect(db.queries.at(-1)!.sql).toMatch(/^update "model" set "manifest" = \$1/)
 		expect(db.queries.at(-1)!.sql).toContain('"jobId" = $')
 		expect(db.queries.at(-1)!.parameters).toEqual([MANIFEST, expect.any(Number), MODEL_ID, JOB_ID])
@@ -196,7 +198,7 @@ describe('artifacts and job status', () => {
 			body: 'glTF',
 		})
 		expect(artifact.status).toBe(409)
-		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).toBeNull()
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/job-0/model.glb`)).toBeNull()
 
 		const db = mockDb([[modelRow()]])
 		const status = await call(`/app/models/${MODEL_ID}/job-status`, {
@@ -217,7 +219,7 @@ describe('artifacts and job status', () => {
 			body,
 		})
 		expect(response.status).toBe(400)
-		expect(await env.MODELS!.head(`m/${MODEL_ID}/manifest.json`)).toBeNull()
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/${JOB_ID}/manifest.json`)).toBeNull()
 	})
 
 	it('requires Content-Length on an artifact', async () => {
@@ -229,7 +231,9 @@ describe('artifacts and job status', () => {
 		expect(response.status).toBe(411)
 	})
 
-	it('refuses ready until both artifacts exist', async () => {
+	it('refuses ready until both artifacts exist for this attempt', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/job-0/model.glb`, new Uint8Array([1, 2, 3, 4]))
+		await env.MODELS!.put(`m/${MODEL_ID}/job-0/manifest.json`, JSON.stringify(MANIFEST))
 		mockDb([[modelRow({ manifest: MANIFEST })]])
 		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
 			method: 'POST',
@@ -240,8 +244,8 @@ describe('artifacts and job status', () => {
 	})
 
 	it('marks the model ready once both artifacts exist', async () => {
-		await env.MODELS!.put(`m/${MODEL_ID}/model.glb`, new Uint8Array([1, 2, 3, 4]))
-		await env.MODELS!.put(`m/${MODEL_ID}/manifest.json`, JSON.stringify(MANIFEST))
+		await env.MODELS!.put(`m/${MODEL_ID}/${JOB_ID}/model.glb`, new Uint8Array([1, 2, 3, 4]))
+		await env.MODELS!.put(`m/${MODEL_ID}/${JOB_ID}/manifest.json`, JSON.stringify(MANIFEST))
 		const db = mockDb([[modelRow({ manifest: MANIFEST })], [{ id: MODEL_ID }]])
 		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
 			method: 'POST',
@@ -254,6 +258,15 @@ describe('artifacts and job status', () => {
 		expect(update.sql).toContain('"status" in (')
 		expect(update.sql).toContain('"jobId" = $')
 		expect(update.parameters).toEqual(expect.arrayContaining(['ready', 1, MODEL_ID, JOB_ID]))
+	})
+
+	it('serves the GLB of the row’s current attempt', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/job-0/model.glb`, new Uint8Array([9]))
+		await env.MODELS!.put(`m/${MODEL_ID}/${JOB_ID}/model.glb`, new Uint8Array([1, 2, 3, 4]))
+		mockDb([[{ ...modelRow({ status: 'ready', manifest: MANIFEST }), role: 'member' }]])
+		const response = await call(`/app/models/${MODEL_ID}/glb`)
+		expect(response.status).toBe(200)
+		expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([1, 2, 3, 4])
 	})
 
 	it('records a converter failure with its code', async () => {
@@ -521,7 +534,6 @@ describe('user routes', () => {
 
 	it('re-queues a failed model whose source exists, and marks it failed if the converter is down', async () => {
 		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
-		await env.MODELS!.put(`m/${MODEL_ID}/model.glb`, new Uint8Array([1]))
 		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
 		const db = mockDb([[{ ...failed, role: 'member' }], [{ ...failed, status: 'queued' }]])
 		vi.stubGlobal(
@@ -534,7 +546,6 @@ describe('user routes', () => {
 			body: JSON.stringify({ parts: [] }),
 		})
 		expect(await response.json()).toEqual({ status: 'queued' })
-		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).toBeNull()
 
 		// The dispatch runs after the response, on a pool of its own.
 		const dispatchDb = mockDb([])
@@ -547,9 +558,8 @@ describe('user routes', () => {
 		)
 	})
 
-	it('leaves the artifacts alone when a racing retry claimed the model first', async () => {
+	it('answers with the winner’s status when a racing retry claimed the model first', async () => {
 		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
-		await env.MODELS!.put(`m/${MODEL_ID}/model.glb`, new Uint8Array([1]))
 		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
 		// The claim updates no row; the reload sees the winner's attempt.
 		mockDb([[{ ...failed, role: 'member' }], [], [modelRow({ status: 'converting' })]])
@@ -558,33 +568,6 @@ describe('user routes', () => {
 			body: JSON.stringify({ parts: [] }),
 		})
 		expect(await response.json()).toEqual({ status: 'converting' })
-		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).not.toBeNull()
-		expect(waitUntil).not.toHaveBeenCalled()
-	})
-
-	it('returns a claimed retry to failed if the old artifacts cannot be cleared', async () => {
-		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
-		env.MODELS!.delete = vi.fn(async () => Promise.reject(new Error('R2 down')))
-		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
-		const db = mockDb([
-			[{ ...failed, role: 'member' }],
-			[{ ...failed, status: 'queued', jobId: 'job-2' }],
-		])
-		const response = await call(`/app/models/${MODEL_ID}/complete`, {
-			method: 'POST',
-			body: JSON.stringify({ parts: [] }),
-		})
-		expect(response.status).toBe(500)
-		const revert = db.queries.at(-1)!
-		expect(revert.sql).toMatch(/^update "model" set "status" = \$1, "errorCode" = \$2/)
-		expect(revert.parameters).toEqual([
-			'failed',
-			'conversion_failed',
-			expect.any(Number),
-			MODEL_ID,
-			'job-2',
-			'queued',
-		])
 		expect(waitUntil).not.toHaveBeenCalled()
 	})
 

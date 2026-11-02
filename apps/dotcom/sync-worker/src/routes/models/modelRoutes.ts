@@ -272,8 +272,8 @@ async function completeModelUpload(
 			return 'queued'
 		}
 
-		// The client's retry: run the conversion again from the stored source. The claim comes first
-		// so only one of two racing retries deletes artifacts, and never the winner's.
+		// The client's retry: run the conversion again from the stored source. The new attempt writes
+		// under its own job id, so the old attempt's artifacts are left where they are.
 		if (model.status === 'failed') {
 			if (!(await bucket.head(modelKeys.source(modelId)))) fail(409, 'invalid_state')
 			const claimed = await db
@@ -292,18 +292,6 @@ async function completeModelUpload(
 				.returningAll()
 				.executeTakeFirst()
 			if (!claimed) return (await loadModel(db, modelId)).status
-			try {
-				await bucket.delete(MODEL_ARTIFACT_NAMES.map((name) => modelKeys.artifact(modelId, name)))
-			} catch (error) {
-				await db
-					.updateTable('model')
-					.set({ status: 'failed', errorCode: model.errorCode, updatedAt: Date.now() })
-					.where('id', '=', modelId)
-					.where('jobId', '=', claimed.jobId)
-					.where('status', '=', 'queued')
-					.execute()
-				fail(500, 'internal_error', `Could not clear old artifacts: ${(error as Error).message}`)
-			}
 			ctx.waitUntil(dispatchJob(env, claimed))
 			return 'queued'
 		}
@@ -406,9 +394,9 @@ async function getModelGlb(request: IRequest, env: Environment): Promise<Respons
 	const userId = await requireUserId(request, env)
 	const bucket = getBucket(env)
 	const model = await withDb(env, (db) => loadModelForMember(db, modelId, userId))
-	if (model.status !== 'ready') fail(409, 'invalid_state')
+	if (model.status !== 'ready' || !model.jobId) fail(409, 'invalid_state')
 
-	const key = modelKeys.artifact(modelId, 'model.glb')
+	const key = modelKeys.artifact(modelId, model.jobId, 'model.glb')
 	let object: R2Object | R2ObjectBody | null
 	try {
 		object = await bucket.get(key, { range: request.headers, onlyIf: request.headers })
@@ -466,7 +454,7 @@ async function putModelArtifact(request: IRequest, env: Environment): Promise<Re
 
 	return withDb(env, async (db) => {
 		requireCurrentJob(await loadModel(db, modelId), jobId)
-		const key = modelKeys.artifact(modelId, name)
+		const key = modelKeys.artifact(modelId, jobId, name)
 
 		if (name === 'model.glb') {
 			await bucket.put(key, request.body, {
@@ -510,7 +498,7 @@ async function postModelJobStatus(request: IRequest, env: Environment): Promise<
 				break
 			case 'ready': {
 				const [glb, manifest] = await Promise.all(
-					MODEL_ARTIFACT_NAMES.map((name) => bucket.head(modelKeys.artifact(modelId, name)))
+					MODEL_ARTIFACT_NAMES.map((name) => bucket.head(modelKeys.artifact(modelId, jobId, name)))
 				)
 				if (!glb || !manifest || !model.manifest) {
 					fail(409, 'invalid_state', 'Artifacts are missing')

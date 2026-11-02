@@ -44,9 +44,11 @@ export function getModelWorkerOrigin(env: Environment) {
 	return (env.MODEL_WORKER_ORIGIN || DEFAULT_WORKER_ORIGIN).replace(/\/+$/, '')
 }
 
+// Artifacts are keyed by attempt, so a stalled old job cannot overwrite a retry's output.
 export const modelKeys = {
 	source: (modelId: string) => `m/${modelId}/source`,
-	artifact: (modelId: string, name: Model3dArtifactName) => `m/${modelId}/${name}`,
+	artifact: (modelId: string, jobId: string, name: Model3dArtifactName) =>
+		`m/${modelId}/${jobId}/${name}`,
 }
 
 export const MODEL_ARTIFACT_NAMES: readonly Model3dArtifactName[] = ['model.glb', 'manifest.json']
