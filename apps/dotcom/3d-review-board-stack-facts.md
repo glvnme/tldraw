@@ -14,7 +14,7 @@ Research for the local prototype track, 2026-11-02. Each fact was tested in a sc
   })
   ```
   Throws `Error(log)` on failure.
-- Works: `-cc`, `-km`, `-si`, `-mi`. `-kn` blocks merging and inflates output (2000 named boxes: 184 KB to 1.5 MB), so do not use it.
+- Works: `-cc`, `-km`, `-si`, `-mi`. Use `-cc -mm`: with `-cc` alone, deduplicated IFC geometry stays as one node per product (1,021 draw calls on a 13 MB sample); `-mm` merges to one node, keeps `_BATCHID` and is 9% smaller. `-kn` blocks merging and inflates output (2000 named boxes: 184 KB to 1.5 MB), so do not use it.
 - No texture compression in the WASM build. `-tc` and `-tw` fail on textured input ("built without BasisU support"). Without them, textures pass through unchanged. Cap texture bytes instead.
 - Inputs: `.obj` (with MTL through the `read` callback), `.gltf`, `.glb`.
 - Draco input fails ("file requires Draco mesh compression support"). Detect `KHR_draco_mesh_compression` in the JSON and reject with an error code.
@@ -50,7 +50,7 @@ api.Dispose()
 - Vertex layout: interleaved, 6 floats per vertex (position xyz, normal xyz). Color RGBA 0..1.
 - `flatTransformation` is column-major, usable directly as glTF `node.matrix`.
 - Do not call `mesh.delete()` inside the stream callback; it throws.
-- Output is Z-up. Add a root rotation of -90 degrees about X for glTF. `StreamAllMeshes` applies the unit scale by default, so expect metres (millimetre files unverified).
+- `flatTransformation` already converts IFC's Z-up to glTF's Y-up. Do not add a root rotation; doing so lays the model on its side (corrected in stage 2a end-to-end testing). `GetCoordinationMatrix` is also in Y-up axes. `StreamAllMeshes` applies the unit scale by default, so expect metres (millimetre files unverified).
 - Turn on `COORDINATE_TO_ORIGIN` and store `GetCoordinationMatrix(id)` in the manifest.
 - Group by `mesh.expressID`. `api.GetLine(id, expressID).GlobalId.value` gives the GlobalId, `GetLineType` the type code. Write `expressID` into `_BATCHID` and keep an `expressID -> { globalId, ifcType, name }` map next to the manifest.
 - 13 MB IFC2X3 sample: 2586 products, 4896 placements, 174k triangles, 0.8 s, 267 MB RSS. Larger files unverified. A known "Maximum call stack size exceeded" in `StreamAllMeshes` is fixed with `node --stack-size`. Run in a child process with a kill timer.
@@ -66,7 +66,7 @@ api.Dispose()
 ## STL
 
 - Binary: 80-byte header, uint32 count, 50 bytes per facet. Detect by size first: binary if `byteLength === 84 + 50 * n`, even when the header starts with `solid`. Else ASCII if it starts with `solid`. Else binary.
-- No units in the format. Assume millimetres, scale to metres, record the unit in the manifest. Assume Z-up, rotate like IFC. Recompute normals from winding. One grey material. Ignore color extensions.
+- No units in the format. Assume millimetres, scale to metres, record the unit in the manifest. Assume Z-up and rotate -90 degrees about X to reach glTF's Y-up. Recompute normals from winding. One grey material. Ignore color extensions.
 
 ## wrangler dev and R2 (wrangler 4.156.1)
 
