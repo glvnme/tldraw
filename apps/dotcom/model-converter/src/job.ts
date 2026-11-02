@@ -53,13 +53,26 @@ export function transferTimeoutMs(bytes: number) {
 	return STATUS_TIMEOUT_MS + Math.ceil(bytes / MIN_BYTES_PER_MS)
 }
 
+// IFC parsing blocks the event loop for longer than the worker's keep-alive timeout, so the next
+// request can go out on a pooled socket the worker has already closed and fail with EPIPE before
+// the worker sees it. Such a request is sent once more, on a new socket.
+async function fetchWorker(url: string, init: () => RequestInit): Promise<Response> {
+	try {
+		return await fetch(url, init())
+	} catch (error) {
+		const code = ((error as Error).cause as { code?: unknown } | undefined)?.code
+		if (code !== 'EPIPE' && code !== 'ECONNRESET') throw error
+		return fetch(url, init())
+	}
+}
+
 export async function reportStatus(job: Model3dConvertJob, status: Model3dJobStatusRequest) {
-	const response = await fetch(job.statusUrl, {
+	const response = await fetchWorker(job.statusUrl, () => ({
 		method: 'POST',
 		headers: { authorization: `Bearer ${job.token}`, 'content-type': 'application/json' },
 		body: JSON.stringify(status),
 		signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
-	})
+	}))
 	if (!response.ok) {
 		throw new Error(`status ${status.status} refused: ${response.status} ${await response.text()}`)
 	}
@@ -82,7 +95,7 @@ async function fetchSource(job: Model3dConvertJob): Promise<Uint8Array> {
 }
 
 async function putArtifact(job: Model3dConvertJob, name: Model3dArtifactName, body: Uint8Array) {
-	const response = await fetch(`${job.artifactUrlBase}/${name}`, {
+	const response = await fetchWorker(`${job.artifactUrlBase}/${name}`, () => ({
 		method: 'PUT',
 		headers: {
 			authorization: `Bearer ${job.token}`,
@@ -91,7 +104,7 @@ async function putArtifact(job: Model3dConvertJob, name: Model3dArtifactName, bo
 		// Always ArrayBuffer-backed: gltfpack output and TextEncoder output.
 		body: body as Uint8Array<ArrayBuffer>,
 		signal: AbortSignal.timeout(transferTimeoutMs(body.byteLength)),
-	})
+	}))
 	if (!response.ok) {
 		throw new Error(`${name} upload refused: ${response.status} ${await response.text()}`)
 	}
