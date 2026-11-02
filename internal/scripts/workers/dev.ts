@@ -221,6 +221,10 @@ async function main() {
 		'info',
 		'--var',
 		'IS_LOCAL:true',
+		// sync-worker's local dev identity; see apps/dotcom/README.md.
+		...(process.env.LOCAL_DEV_AUTH
+			? ['--var', `LOCAL_DEV_AUTH:${process.env.LOCAL_DEV_AUTH}`]
+			: []),
 		...process.argv.slice(2),
 	]).start()
 

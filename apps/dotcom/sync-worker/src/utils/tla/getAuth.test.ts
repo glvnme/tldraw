@@ -18,8 +18,10 @@ vi.mock('../featureFlags', () => ({ canUseMcpServer: vi.fn() }))
 import { canUseMcpServer } from '../featureFlags'
 import {
 	getMcpTokenAuth,
+	getAuth,
 	getZeroAuth,
 	isOAuthAccessToken,
+	LOCAL_DEV_USER,
 	requireAdminAccessToRequest,
 } from './getAuth'
 
@@ -320,5 +322,47 @@ describe('getZeroAuth', () => {
 
 		await expect(getZeroAuth(request(templateToken), env)).resolves.toEqual({ userId: 'user_2' })
 		expect(authenticateRequest).not.toHaveBeenCalled()
+	})
+})
+
+describe('local dev auth', () => {
+	const devEnv = { ...env, LOCAL_DEV_AUTH: '1', TLDRAW_ENV: 'development', IS_LOCAL: 'true' }
+
+	function requestWith(headers: Record<string, string>, query = '') {
+		return { url: `http://localhost:8787/app/x${query}`, headers: new Headers(headers) } as any
+	}
+
+	beforeEach(() => {
+		authenticateRequest.mockReset()
+		verifyToken.mockReset()
+	})
+
+	it.each([
+		['a bearer header', requestWith({ authorization: `Bearer ${LOCAL_DEV_USER.token}` })],
+		['the socket query string', requestWith({}, `?accessToken=${LOCAL_DEV_USER.token}`)],
+		['the session cookie', requestWith({ cookie: `a=b; __session=${LOCAL_DEV_USER.token}` })],
+	])('accepts the fixed token from %s in dev, without Clerk', async (_, req) => {
+		await expect(getAuth(req, devEnv)).resolves.toEqual({ userId: LOCAL_DEV_USER.id })
+		await expect(getZeroAuth(req, devEnv)).resolves.toEqual({ userId: LOCAL_DEV_USER.id })
+		expect(authenticateRequest).not.toHaveBeenCalled()
+		expect(verifyToken).not.toHaveBeenCalled()
+	})
+
+	it('refuses any other token in dev, without Clerk', async () => {
+		const req = requestWith({ authorization: 'Bearer some-clerk-jwt' })
+		await expect(getAuth(req, devEnv)).resolves.toBeNull()
+		await expect(getZeroAuth(req, devEnv)).resolves.toBeNull()
+		expect(authenticateRequest).not.toHaveBeenCalled()
+	})
+
+	it.each([
+		['the flag is off', { ...devEnv, LOCAL_DEV_AUTH: undefined }],
+		['the worker is not in the dev environment', { ...devEnv, TLDRAW_ENV: 'production' }],
+		['the worker is deployed', { ...devEnv, IS_LOCAL: undefined }],
+	])('leaves the fixed token to Clerk when %s', async (_, otherEnv) => {
+		signedInAs(null)
+		const req = requestWith({ authorization: `Bearer ${LOCAL_DEV_USER.token}` })
+		await expect(getAuth(req, otherEnv)).resolves.toBeNull()
+		expect(authenticateRequest).toHaveBeenCalled()
 	})
 })
