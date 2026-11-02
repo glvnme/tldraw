@@ -63,8 +63,9 @@ export function parseCreateModelRequest(body: unknown): CreateModelRequest | nul
 	return { name: name.trim(), sourceFormat, sourceBytes, fileId }
 }
 
+/** `parts` may be empty: the client retries a failed conversion with `{ parts: [] }`. */
 export function parseCompleteUploadRequest(body: unknown): CompleteUploadRequest | null {
-	if (!isObj(body) || !Array.isArray(body.parts) || body.parts.length === 0) return null
+	if (!isObj(body) || !Array.isArray(body.parts)) return null
 	const parts: CompleteUploadRequest['parts'] = []
 	for (const part of body.parts) {
 		if (!isObj(part) || !isPartNumber(part.partNumber) || typeof part.etag !== 'string') {

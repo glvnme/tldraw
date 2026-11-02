@@ -230,6 +230,7 @@ async function completeModelUpload(
 
 		if (model.status === 'uploading') {
 			if (!model.uploadId) fail(409, 'invalid_state')
+			if (body.parts.length === 0) fail(400, 'bad_request', 'No parts to complete')
 			let size: number
 			try {
 				const upload = bucket.resumeMultipartUpload(modelKeys.source(modelId), model.uploadId)

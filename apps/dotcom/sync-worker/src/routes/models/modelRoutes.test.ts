@@ -345,6 +345,15 @@ describe('user routes', () => {
 		})
 	})
 
+	it('refuses to complete an upload with no parts', async () => {
+		mockDb([[{ ...modelRow({ status: 'uploading', uploadId: 'upload-1' }), role: 'owner' }]])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [] }),
+		})
+		expect(response.status).toBe(400)
+	})
+
 	it('refuses a part without Content-Length', async () => {
 		mockDb([[{ ...modelRow({ status: 'uploading', uploadId: 'upload-1' }), role: 'owner' }]])
 		const response = await call(`/app/models/${MODEL_ID}/parts/1`, {
@@ -366,7 +375,7 @@ describe('user routes', () => {
 
 		const response = await call(`/app/models/${MODEL_ID}/complete`, {
 			method: 'POST',
-			body: JSON.stringify({ parts: [{ partNumber: 1, etag: 'etag-1' }] }),
+			body: JSON.stringify({ parts: [] }),
 		})
 		expect(await response.json()).toEqual({ status: 'queued' })
 		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).toBeNull()
