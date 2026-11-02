@@ -21,6 +21,7 @@ const SECRET = 'test-model-job-secret'
 const USER_ID = 'user-1'
 const GROUP_ID = 'group-1'
 const MODEL_ID = 'model-1'
+const JOB_ID = 'job-1'
 
 // Multipart on top of the shared fake, and stream bodies for put.
 function createModelsBucket() {
@@ -75,6 +76,7 @@ function modelRow(overrides: Partial<TlaModel> = {}): TlaModel {
 		errorCode: null,
 		manifest: null,
 		uploadId: null,
+		jobId: JOB_ID,
 		createdAt: 1,
 		updatedAt: 1,
 		...overrides,
@@ -105,8 +107,9 @@ function call(path: string, init: RequestInit & { headers?: Record<string, strin
 	} as unknown as ExecutionContext) as Promise<Response>
 }
 
-async function bearer(modelId = MODEL_ID, expiresAt = Date.now() + 60_000) {
-	return { authorization: `Bearer ${await signModel3dJobToken(SECRET, modelId, expiresAt)}` }
+async function bearer(modelId = MODEL_ID, expiresAt = Date.now() + 60_000, jobId = JOB_ID) {
+	const token = await signModel3dJobToken(SECRET, modelId, jobId, expiresAt)
+	return { authorization: `Bearer ${token}` }
 }
 
 beforeEach(() => {
@@ -143,7 +146,7 @@ describe('job token', () => {
 		[
 			'a token signed with another secret',
 			async () => ({
-				authorization: `Bearer ${await signModel3dJobToken('other', MODEL_ID, Date.now() + 60_000)}`,
+				authorization: `Bearer ${await signModel3dJobToken('other', MODEL_ID, JOB_ID, Date.now() + 60_000)}`,
 			}),
 		],
 	])('refuses %s on every converter route', async (_, headers) => {
@@ -180,7 +183,29 @@ describe('artifacts and job status', () => {
 		expect(response.status).toBe(200)
 		expect(await (await env.MODELS!.get(`m/${MODEL_ID}/manifest.json`))!.json()).toEqual(MANIFEST)
 		expect(db.queries.at(-1)!.sql).toMatch(/^update "model" set "manifest" = \$1/)
-		expect(db.queries.at(-1)!.parameters[0]).toEqual(MANIFEST)
+		expect(db.queries.at(-1)!.sql).toContain('"jobId" = $')
+		expect(db.queries.at(-1)!.parameters).toEqual([MANIFEST, expect.any(Number), MODEL_ID, JOB_ID])
+	})
+
+	it('refuses writes from a job that a retry has replaced', async () => {
+		const stale = await bearer(MODEL_ID, Date.now() + 60_000, 'job-0')
+		mockDb([[modelRow()]])
+		const artifact = await call(`/app/models/${MODEL_ID}/artifacts/model.glb`, {
+			method: 'PUT',
+			headers: { ...stale, 'content-length': '4' },
+			body: 'glTF',
+		})
+		expect(artifact.status).toBe(409)
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).toBeNull()
+
+		const db = mockDb([[modelRow()]])
+		const status = await call(`/app/models/${MODEL_ID}/job-status`, {
+			method: 'POST',
+			headers: stale,
+			body: JSON.stringify({ status: 'failed', errorCode: 'conversion_failed' }),
+		})
+		expect(status.status).toBe(409)
+		expect(db.queries).toHaveLength(1)
 	})
 
 	it('rejects an invalid manifest', async () => {
@@ -227,11 +252,12 @@ describe('artifacts and job status', () => {
 		const update = db.queries.at(-1)!
 		expect(update.sql).toContain('where "id" = $')
 		expect(update.sql).toContain('"status" in (')
-		expect(update.parameters).toEqual(expect.arrayContaining(['ready', 1, MODEL_ID]))
+		expect(update.sql).toContain('"jobId" = $')
+		expect(update.parameters).toEqual(expect.arrayContaining(['ready', 1, MODEL_ID, JOB_ID]))
 	})
 
 	it('refuses a status update for a model that already finished', async () => {
-		mockDb([[]])
+		mockDb([[modelRow({ status: 'ready' })]])
 		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
 			method: 'POST',
 			headers: await bearer(),

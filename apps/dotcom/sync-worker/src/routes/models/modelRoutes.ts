@@ -178,6 +178,7 @@ async function createModel(request: IRequest, env: Environment): Promise<Respons
 				errorCode: null,
 				manifest: null,
 				uploadId: upload.uploadId,
+				jobId: null,
 				createdAt: now,
 				updatedAt: now,
 			})
@@ -249,7 +250,13 @@ async function completeModelUpload(
 			}
 			const claimed = await db
 				.updateTable('model')
-				.set({ status: 'queued', uploadId: null, sourceBytes: size, updatedAt: now })
+				.set({
+					status: 'queued',
+					uploadId: null,
+					sourceBytes: size,
+					jobId: uniqueId(),
+					updatedAt: now,
+				})
 				.where('id', '=', modelId)
 				.where('status', '=', 'uploading')
 				.returningAll()
@@ -271,6 +278,7 @@ async function completeModelUpload(
 					progress: 0,
 					errorCode: null,
 					manifest: null,
+					jobId: uniqueId(),
 					updatedAt: now,
 				})
 				.where('id', '=', modelId)
@@ -327,12 +335,24 @@ async function getModelGlb(request: IRequest, env: Environment): Promise<Respons
 
 // Converter-facing routes, authorized by the job token alone.
 
-async function requireJobToken(request: IRequest, env: Environment, modelId: string) {
+/** The conversion attempt the token was issued for. */
+async function requireJobToken(
+	request: IRequest,
+	env: Environment,
+	modelId: string
+): Promise<string> {
 	const secret = env.MODEL_JOB_SECRET ?? fail(503, 'internal_error', 'MODEL_JOB_SECRET is not set')
 	const match = /^Bearer\s+(\S+)\s*$/i.exec(request.headers.get('authorization') ?? '')
-	if (!match || !(await verifyModel3dJobToken(secret, match[1], modelId))) {
-		fail(401, 'invalid_token')
-	}
+	const jobId = match && (await verifyModel3dJobToken(secret, match[1], modelId))
+	return jobId || fail(401, 'invalid_token')
+}
+
+const CONVERTING: Model3dStatus[] = ['queued', 'converting']
+
+/** Refuses a job a retry has replaced, so it cannot write over the newer attempt. */
+function requireCurrentJob(model: TlaModel, jobId: string) {
+	if (model.jobId !== jobId) fail(409, 'invalid_state', 'Superseded by a newer conversion')
+	if (!CONVERTING.includes(model.status)) fail(409, 'invalid_state')
 }
 
 async function getModelSource(request: IRequest, env: Environment): Promise<Response> {
@@ -348,11 +368,9 @@ async function getModelSource(request: IRequest, env: Environment): Promise<Resp
 	})
 }
 
-const CONVERTING: Model3dStatus[] = ['queued', 'converting']
-
 async function putModelArtifact(request: IRequest, env: Environment): Promise<Response> {
 	const modelId = modelIdParam(request)
-	await requireJobToken(request, env, modelId)
+	const jobId = await requireJobToken(request, env, modelId)
 	const name = request.params.name as Model3dArtifactName
 	if (!MODEL_ARTIFACT_NAMES.includes(name)) fail(404, 'not_found')
 	const bucket = getBucket(env)
@@ -362,8 +380,7 @@ async function putModelArtifact(request: IRequest, env: Environment): Promise<Re
 	if (length === 0 || !request.body) fail(400, 'bad_request', 'Empty artifact')
 
 	return withDb(env, async (db) => {
-		const model = await loadModel(db, modelId)
-		if (!CONVERTING.includes(model.status)) fail(409, 'invalid_state')
+		requireCurrentJob(await loadModel(db, modelId), jobId)
 		const key = modelKeys.artifact(modelId, name)
 
 		if (name === 'model.glb') {
@@ -384,6 +401,7 @@ async function putModelArtifact(request: IRequest, env: Environment): Promise<Re
 				.updateTable('model')
 				.set({ manifest, updatedAt: Date.now() })
 				.where('id', '=', modelId)
+				.where('jobId', '=', jobId)
 				.execute()
 		}
 		return Response.json({ ok: true })
@@ -392,19 +410,20 @@ async function putModelArtifact(request: IRequest, env: Environment): Promise<Re
 
 async function postModelJobStatus(request: IRequest, env: Environment): Promise<Response> {
 	const modelId = modelIdParam(request)
-	await requireJobToken(request, env, modelId)
+	const jobId = await requireJobToken(request, env, modelId)
 	const body = parseJobStatusRequest(await readJson(request)) ?? fail(400, 'bad_request')
 	const bucket = getBucket(env)
 
 	return withDb(env, async (db) => {
 		const now = Date.now()
+		const model = await loadModel(db, modelId)
+		requireCurrentJob(model, jobId)
 		let update: Partial<TlaModel>
 		switch (body.status) {
 			case 'converting':
 				update = { status: 'converting', stage: body.stage, progress: body.progress }
 				break
 			case 'ready': {
-				const model = await loadModel(db, modelId)
 				const [glb, manifest] = await Promise.all(
 					MODEL_ARTIFACT_NAMES.map((name) => bucket.head(modelKeys.artifact(modelId, name)))
 				)
@@ -426,6 +445,7 @@ async function postModelJobStatus(request: IRequest, env: Environment): Promise<
 			.updateTable('model')
 			.set({ ...update, updatedAt: now })
 			.where('id', '=', modelId)
+			.where('jobId', '=', jobId)
 			.where('status', 'in', CONVERTING)
 			.returning('id')
 			.executeTakeFirst()
@@ -440,6 +460,7 @@ export async function buildConvertJob(
 	model: TlaModel
 ): Promise<Model3dConvertJob> {
 	const secret = env.MODEL_JOB_SECRET ?? fail(503, 'internal_error', 'MODEL_JOB_SECRET is not set')
+	if (!model.jobId) fail(500, 'internal_error', 'The model has no job id')
 	const origin = getModelWorkerOrigin(env)
 	return {
 		modelId: model.id,
@@ -447,7 +468,12 @@ export async function buildConvertJob(
 		sourceUrl: origin + model3dPaths.source(model.id),
 		artifactUrlBase: `${origin}${model3dPaths.status(model.id)}/artifacts`,
 		statusUrl: origin + model3dPaths.jobStatus(model.id),
-		token: await signModel3dJobToken(secret, model.id, Date.now() + MODEL_JOB_TOKEN_TTL_MS),
+		token: await signModel3dJobToken(
+			secret,
+			model.id,
+			model.jobId,
+			Date.now() + MODEL_JOB_TOKEN_TTL_MS
+		),
 		limits: MODEL_JOB_LIMITS,
 	}
 }
@@ -470,6 +496,7 @@ async function dispatchJob(env: Environment, model: TlaModel) {
 			.updateTable('model')
 			.set({ status: 'failed', errorCode: 'converter_unavailable', updatedAt: Date.now() })
 			.where('id', '=', model.id)
+			.where('jobId', '=', model.jobId)
 			.where('status', '=', 'queued')
 			.execute()
 	).catch((error) => console.error(`could not mark model ${model.id} failed`, error))
