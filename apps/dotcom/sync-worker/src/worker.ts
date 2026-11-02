@@ -349,13 +349,15 @@ export default class Worker extends WorkerEntrypoint<Environment> {
 	// Validates auth + file write access before the upload is written to R2.
 	async validateUpload(
 		fileId: string,
-		authorizationHeader: string | null
+		authorizationHeader: string | null,
+		// The upload request's own URL, so the local dev identity can tell a loopback request.
+		requestUrl: string
 	): Promise<{ ok: true; userId: string | null } | { ok: false; error: string }> {
 		const db = createPostgresConnectionPool(this.env, 'sync-worker')
 		try {
 			let userId: string | null = null
 			if (authorizationHeader) {
-				const fakeReq = new Request('https://internal', {
+				const fakeReq = new Request(requestUrl, {
 					headers: { Authorization: authorizationHeader },
 				}) as unknown as IRequest
 				// A session token first, then an MCP access token: the same fallback the download and

@@ -3,7 +3,8 @@ import { R2Bucket, WorkerVersionMetadata } from '@cloudflare/workers-types'
 interface SyncWorkerRpc {
 	validateUpload(
 		fileId: string,
-		authorizationHeader: string | null
+		authorizationHeader: string | null,
+		requestUrl: string
 	): Promise<{ ok: true; userId: string | null } | { ok: false; error: string }>
 	confirmUpload(objectName: string, fileId: string, userId: string | null): Promise<void>
 }

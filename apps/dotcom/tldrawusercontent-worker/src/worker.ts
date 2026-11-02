@@ -47,7 +47,7 @@ export default class Worker extends WorkerEntrypoint<Environment> {
 			if (fileId) {
 				const authHeader = request.headers.get('Authorization')
 				const validation = await retry(
-					() => this.env.SYNC_WORKER.validateUpload(fileId, authHeader),
+					() => this.env.SYNC_WORKER.validateUpload(fileId, authHeader, request.url),
 					TRANSIENT_RETRY_OPTIONS
 				)
 				if (!validation.ok) {
