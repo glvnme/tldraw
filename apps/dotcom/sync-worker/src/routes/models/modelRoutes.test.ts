@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFakeKysely } from '../../test/fakeKysely'
 import { createFakeR2 } from '../../test/fakeR2'
 import { Environment } from '../../types'
-import { MODEL_PART_SIZE } from './modelConfig'
+import { MODEL_JOB_EXPIRY_MS, MODEL_PART_SIZE } from './modelConfig'
 
 vi.mock('../../postgres', () => ({ createPostgresConnectionPool: vi.fn() }))
 vi.mock('../../utils/tla/getAuth', () => ({ getAuth: vi.fn() }))
@@ -78,7 +78,7 @@ function modelRow(overrides: Partial<TlaModel> = {}): TlaModel {
 		uploadId: null,
 		jobId: JOB_ID,
 		createdAt: 1,
-		updatedAt: 1,
+		updatedAt: Date.now(),
 		...overrides,
 	}
 }
@@ -295,6 +295,30 @@ describe('user routes', () => {
 			errorCode: null,
 			manifest: null,
 		})
+	})
+
+	it('expires a job the converter abandoned so the client can retry', async () => {
+		const stale = modelRow({ updatedAt: Date.now() - MODEL_JOB_EXPIRY_MS - 1 })
+		const expired = { ...stale, status: 'failed', stage: null, errorCode: 'conversion_timeout' }
+		const db = mockDb([[{ ...stale, role: 'member' }], [expired]])
+		const response = await call(`/app/models/${MODEL_ID}`)
+		expect(await response.json()).toMatchObject({
+			status: 'failed',
+			errorCode: 'conversion_timeout',
+		})
+		const update = db.queries.at(-1)!
+		expect(update.sql).toContain('"status" in (')
+		expect(update.sql).toContain('"updatedAt" = $')
+		expect(update.parameters).toEqual(
+			expect.arrayContaining(['failed', 'conversion_timeout', MODEL_ID, stale.updatedAt])
+		)
+	})
+
+	it('leaves a job that reported recently alone', async () => {
+		const db = mockDb([[{ ...modelRow({ updatedAt: Date.now() - 60_000 }), role: 'member' }]])
+		const response = await call(`/app/models/${MODEL_ID}`)
+		expect(await response.json()).toMatchObject({ status: 'converting' })
+		expect(db.queries).toHaveLength(1)
 	})
 
 	it('refuses a source over the size cap at create', async () => {

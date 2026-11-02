@@ -27,6 +27,7 @@ import { getFileRecordWithRole } from '../../utils/tla/getRole'
 import { buildGlbResponse, rangeNotSatisfiable } from './glbResponse'
 import {
 	MODEL_ARTIFACT_NAMES,
+	MODEL_JOB_EXPIRY_MS,
 	MODEL_JOB_LIMITS,
 	MODEL_JOB_TOKEN_TTL_MS,
 	MODEL_MAX_MANIFEST_BYTES,
@@ -100,6 +101,8 @@ function modelIdParam(request: IRequest): string {
 	const modelId = request.params.modelId
 	return typeof modelId === 'string' && modelId ? modelId : fail(404, 'not_found')
 }
+
+const CONVERTING: Model3dStatus[] = ['queued', 'converting']
 
 async function loadModel(db: Kysely<DB>, modelId: string): Promise<TlaModel> {
 	const model = await db
@@ -309,10 +312,32 @@ async function completeModelUpload(
 	return Response.json(response)
 }
 
+/**
+ * A converter restart forgets its queue, leaving the row queued or converting for good. Expired
+ * here, as the client polls, so its Retry appears; the attempt check keeps the old job from writing
+ * over the retry should it turn out to be alive after all.
+ */
+async function expireAbandonedJob(db: Kysely<DB>, model: TlaModel): Promise<TlaModel> {
+	if (!CONVERTING.includes(model.status) || Date.now() - model.updatedAt <= MODEL_JOB_EXPIRY_MS) {
+		return model
+	}
+	const expired = await db
+		.updateTable('model')
+		.set({ status: 'failed', stage: null, errorCode: 'conversion_timeout', updatedAt: Date.now() })
+		.where('id', '=', model.id)
+		.where('status', 'in', CONVERTING)
+		.where('updatedAt', '=', model.updatedAt)
+		.returningAll()
+		.executeTakeFirst()
+	return expired ?? (await loadModel(db, model.id))
+}
+
 async function getModelStatus(request: IRequest, env: Environment): Promise<Response> {
 	const modelId = modelIdParam(request)
 	const userId = await requireUserId(request, env)
-	const model = await withDb(env, (db) => loadModelForMember(db, modelId, userId))
+	const model = await withDb(env, async (db) =>
+		expireAbandonedJob(db, await loadModelForMember(db, modelId, userId))
+	)
 	const response: GetModelStatusResponse = {
 		modelId: model.id,
 		name: model.name,
@@ -358,8 +383,6 @@ async function requireJobToken(
 	const jobId = match && (await verifyModel3dJobToken(secret, match[1], modelId))
 	return jobId || fail(401, 'invalid_token')
 }
-
-const CONVERTING: Model3dStatus[] = ['queued', 'converting']
 
 /** Refuses a job a retry has replaced, so it cannot write over the newer attempt. */
 function requireCurrentJob(model: TlaModel, jobId: string) {
