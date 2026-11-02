@@ -17,6 +17,7 @@ import {
 	TlaFile,
 	WELCOME_CREATE_SOURCE,
 	can,
+	createFileSyncSchema,
 	type FeatureFlagValue,
 	type Role,
 	type RoomOpenMode,
@@ -44,8 +45,6 @@ import {
 	TLDOCUMENT_ID,
 	TLDocument,
 	TLRecord,
-	commentSchemaRecords,
-	createTLSchema,
 	isCommentId,
 	isCommentReactionId,
 	isCommentThreadId,
@@ -258,9 +257,9 @@ const MB = 1024 * 1024
 
 // The schema for a file room. Includes the opt-in `comment` record type so comment records sync
 // through the room; comments are persisted to Postgres rather than the main document blob (see
-// drainCommentOutbox / loadCommentsFromPostgres). The same records must be registered on the
-// client (see useSync in the dotcom client) or the schemas won't match.
-const fileSyncSchema = createTLSchema({ records: commentSchemaRecords })
+// drainCommentOutbox / loadCommentsFromPostgres). The client builds the same schema from
+// dotcom-shared (see useSync in the dotcom client) or the schemas won't match.
+const fileSyncSchema = createFileSyncSchema()
 
 // Record types served through the room's object-store lane rather than the document lane.
 // Object-lane records sync over the same socket but are gated per session by `objectAccess`
