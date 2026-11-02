@@ -1,5 +1,6 @@
 import { MODEL3D_REVISION_SHAPE_TYPE, MODEL3D_SHAPE_TYPE } from '@tldraw/dotcom-shared'
 import { Editor, TLShape, TLShapeId } from 'tldraw'
+import { cancelModel3dUpload } from './upload'
 
 // Assigned outside history after creation, so undo and redo replay records from before they
 // were set. Once set, an empty value can only come from such a stale record.
@@ -46,7 +47,15 @@ export function registerModel3dEditorRules(editor: Editor) {
 		sideEffects.registerAfterDeleteHandler('shape', (shape) => {
 			if (!ASSIGNED_PROPS[shape.type]) return
 			deletedProps.set(shape.id, { ...shape.props })
+			cancelModel3dUpload(shape.id)
 		}),
+		() => {
+			for (const record of editor.store.allRecords()) {
+				if (record.typeName === 'shape' && record.type === MODEL3D_SHAPE_TYPE) {
+					cancelModel3dUpload(record.id)
+				}
+			}
+		},
 	]
 	editor.disposables.add(() => cleanups.forEach((fn) => fn()))
 }

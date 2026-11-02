@@ -70,12 +70,17 @@ interface UploadJob {
 	onCreated(modelId: string): void
 	created: CreateModelResponse | null
 	etags: Map<number, string>
+	abort: AbortController
 }
 
+// A failed job stays here so Retry can resume it; it leaves on success or cancel.
 const jobs = new Map<TLShapeId, UploadJob>()
 
-export function startModel3dUpload(shapeId: TLShapeId, opts: Omit<UploadJob, 'created' | 'etags'>) {
-	jobs.set(shapeId, { ...opts, created: null, etags: new Map() })
+export function startModel3dUpload(
+	shapeId: TLShapeId,
+	opts: Omit<UploadJob, 'created' | 'etags' | 'abort'>
+) {
+	jobs.set(shapeId, { ...opts, created: null, etags: new Map(), abort: new AbortController() })
 	void runUpload(shapeId)
 }
 
@@ -86,10 +91,24 @@ export function retryModel3dUpload(shapeId: TLShapeId) {
 	return true
 }
 
+/** For a deleted shape or a disposed editor. Drops the file and the callbacks. */
+export function cancelModel3dUpload(shapeId: TLShapeId) {
+	const job = jobs.get(shapeId)
+	if (!job) return
+	jobs.delete(shapeId)
+	job.abort.abort()
+	setLocalUpload(shapeId, null)
+}
+
 async function runUpload(shapeId: TLShapeId) {
 	const job = jobs.get(shapeId)!
+	const abort = new AbortController()
+	job.abort = abort
+	const { signal } = abort
+	const isCancelled = () => jobs.get(shapeId) !== job
 	const { file, getToken } = job
 	const report = () => {
+		if (isCancelled()) return
 		const total = job.created ? Math.max(1, Math.ceil(file.size / job.created.partSize)) : 1
 		setLocalUpload(shapeId, { status: 'uploading', progress: job.etags.size / total, error: null })
 	}
@@ -102,24 +121,26 @@ async function runUpload(shapeId: TLShapeId) {
 				sourceBytes: file.size,
 				fileId: job.fileId,
 			}
-			job.created = await model3dFetch<CreateModelResponse>(getToken, model3dPaths.create(), {
+			const created = await model3dFetch<CreateModelResponse>(getToken, model3dPaths.create(), {
 				method: 'POST',
 				body: JSON.stringify(body),
+				signal,
 			})
-			job.onCreated(job.created.modelId)
+			if (isCancelled()) return
+			job.created = created
+			job.onCreated(created.modelId)
 		}
 		const { modelId, partSize } = job.created
 		const pending = planUploadParts(file.size, partSize).filter((p) => !job.etags.has(p.partNumber))
-		const abort = new AbortController()
 		let next = 0
 		const worker = async () => {
-			while (next < pending.length && !abort.signal.aborted) {
+			while (next < pending.length && !signal.aborted) {
 				const part = pending[next++]
 				// A Blob body gets an exact Content-Length, which R2's uploadPart requires.
 				const res = await model3dFetch<UploadPartResponse>(
 					getToken,
 					model3dPaths.uploadPart(modelId, part.partNumber),
-					{ method: 'PUT', body: file.slice(part.start, part.end), signal: abort.signal }
+					{ method: 'PUT', body: file.slice(part.start, part.end), signal }
 				)
 				job.etags.set(part.partNumber, res.etag)
 				report()
@@ -141,10 +162,13 @@ async function runUpload(shapeId: TLShapeId) {
 		await model3dFetch<CompleteUploadResponse>(getToken, model3dPaths.completeUpload(modelId), {
 			method: 'POST',
 			body: JSON.stringify(complete),
+			signal,
 		})
+		if (isCancelled()) return
 		jobs.delete(shapeId)
 		setLocalUpload(shapeId, null)
 	} catch (e) {
+		if (isCancelled()) return
 		setLocalUpload(shapeId, {
 			status: 'failed',
 			progress: model3dLocalUploads.get().get(shapeId)?.progress ?? 0,
