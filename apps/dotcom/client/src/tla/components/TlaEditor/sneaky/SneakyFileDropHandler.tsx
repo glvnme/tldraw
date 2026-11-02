@@ -6,6 +6,7 @@ import { defaultHandleExternalFileContent, useEditor, useToasts, useTranslation 
 import { routes } from '../../../../routeDefs'
 import { useMaybeApp } from '../../../hooks/useAppState'
 import { useCurrentFileId } from '../../../hooks/useCurrentFileId'
+import { addModel3dFiles, isModel3dFile } from '../../../model3d/drop'
 import { isTldrFile, useRejectTldrawOfflineFiles } from '../../../utils/tldrawOfflineFiles'
 
 export const SneakyTldrawFileDropHandler = memo(function SneakyTldrawFileDropHandler() {
@@ -21,7 +22,18 @@ export const SneakyTldrawFileDropHandler = memo(function SneakyTldrawFileDropHan
 		if (!auth) return
 		if (!app) return
 		editor.registerExternalContentHandler('files', async (content) => {
-			const files = rejectTldrawOfflineFiles(content.files)
+			const allFiles = rejectTldrawOfflineFiles(content.files)
+			const modelFiles = allFiles.filter(isModel3dFile)
+			if (modelFiles.length > 0) {
+				addModel3dFiles(editor, modelFiles, {
+					point: content.point,
+					fileId: fileId && app.getFile(fileId)?.owningGroupId ? fileId : null,
+					getToken: async () => (await auth.getToken()) ?? undefined,
+					toasts,
+					msg,
+				})
+			}
+			const files = allFiles.filter((file) => !isModel3dFile(file))
 			const tldrawFiles = files.filter(isTldrFile)
 			if (tldrawFiles.length > 0) {
 				// Drop into the open file's workspace only if the user can add files there; a guest on

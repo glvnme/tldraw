@@ -47,6 +47,8 @@ export const cspDirectives: { [key: string]: string[] } = {
 	'media-src': [`'self'`, `http:`, `https:`, `data:`, `blob:`],
 	'script-src': [
 		`'self'`,
+		// the meshopt decoder in the 3D viewer compiles WebAssembly
+		`'wasm-unsafe-eval'`,
 		`'${COMMON_ROOM_SNIPPET_CSP_HASH}'`,
 		'https://challenges.cloudflare.com',
 		'https://*.clerk.accounts.dev',
