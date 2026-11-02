@@ -1,10 +1,5 @@
-import {
-	createTLSchema,
-	fetch,
-	parseTldrawJsonFile,
-	TLDocument,
-	TLDRAW_FILE_EXTENSION,
-} from 'tldraw'
+import { fetch, parseTldrawJsonFile, TLDocument, TLDRAW_FILE_EXTENSION } from 'tldraw'
+import { fileSyncSchema } from '../../utils/dotcomShapeUtils'
 import type { TldrawApp } from '../app/TldrawApp'
 
 type ImportResult =
@@ -20,7 +15,7 @@ export async function importFromUrl(app: TldrawApp, url: string): Promise<Import
 		const json = await res.text()
 		const parseResult = parseTldrawJsonFile({
 			json,
-			schema: createTLSchema(),
+			schema: fileSyncSchema,
 		})
 		if (!parseResult.ok) {
 			return { ok: false, error: 'URL did not point to a valid tldraw file' }

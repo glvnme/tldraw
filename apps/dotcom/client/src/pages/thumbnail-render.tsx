@@ -33,7 +33,7 @@ import {
 } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { assetUrls } from '../utils/assetUrls'
-import { embedShapeUtils } from '../utils/embedShapeUtil'
+import { dotcomShapeUtils } from '../utils/dotcomShapeUtils'
 
 // The thumbnail render page: a real editor, loaded with one board's records, that exports itself
 // and displays the export for Browser Run to screenshot. Served as its own Vite entry
@@ -221,7 +221,7 @@ function ThumbnailRenderPage({
 				hideUi
 				licenseKey={getLicenseKey()}
 				assetUrls={assetUrls}
-				shapeUtils={embedShapeUtils}
+				shapeUtils={dotcomShapeUtils}
 				components={{ ErrorFallback: ThumbnailRenderCrash }}
 				snapshot={snapshot}
 				onMount={(editor) => {
