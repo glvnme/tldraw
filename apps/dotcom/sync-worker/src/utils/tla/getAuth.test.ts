@@ -365,4 +365,16 @@ describe('local dev auth', () => {
 		await expect(getAuth(req, otherEnv)).resolves.toBeNull()
 		expect(authenticateRequest).toHaveBeenCalled()
 	})
+
+	it('leaves the fixed token to Clerk on a non-loopback host, even with every flag on', async () => {
+		signedInAs(null)
+		verifyToken.mockRejectedValue(new Error('invalid token'))
+		const req = {
+			url: 'https://deployed.example/app/x',
+			headers: new Headers({ authorization: `Bearer ${LOCAL_DEV_USER.token}` }),
+		} as any
+		await expect(getAuth(req, devEnv)).resolves.toBeNull()
+		await expect(getZeroAuth(req, devEnv)).resolves.toBeNull()
+		expect(authenticateRequest).toHaveBeenCalled()
+	})
 })

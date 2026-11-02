@@ -60,6 +60,14 @@ export function isLocalDevAuth(env: Environment): boolean {
 	return env.LOCAL_DEV_AUTH === '1' && env.TLDRAW_ENV === 'development' && env.IS_LOCAL === 'true'
 }
 
+// The env bindings above are config anyone deploying can set; a loopback URL is what wrangler dev
+// actually serves. Both the Vite proxy and zero-cache reach the worker on a loopback host.
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+function acceptsLocalDevToken(request: IRequest, env: Environment): boolean {
+	return isLocalDevAuth(env) && LOOPBACK_HOSTNAMES.has(new URL(request.url).hostname)
+}
+
 // The same three places a Clerk session token arrives: header, socket query string, cookie.
 function getLocalDevUserId(request: IRequest): string | null {
 	const token =
@@ -70,7 +78,7 @@ function getLocalDevUserId(request: IRequest): string | null {
 }
 
 export async function getAuth(request: IRequest, env: Environment): Promise<SignedInAuth | null> {
-	if (isLocalDevAuth(env)) {
+	if (acceptsLocalDevToken(request, env)) {
 		const userId = getLocalDevUserId(request)
 		return userId ? ({ userId } as SignedInAuth) : null
 	}
@@ -131,7 +139,7 @@ const ZERO_TOKEN_PURPOSE = 'zero'
  * token, keeps working across the deploy.
  */
 export async function getZeroAuth(request: IRequest, env: Environment): Promise<ZeroAuth | null> {
-	if (isLocalDevAuth(env)) return getAuth(request, env)
+	if (acceptsLocalDevToken(request, env)) return getAuth(request, env)
 	const header = request.headers.get('Authorization')
 	const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null
 	if (token && isOAuthAccessToken(token)) {
