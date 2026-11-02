@@ -43,11 +43,22 @@ export function parseConvertJob(value: unknown): Model3dConvertJob | null {
 	return job as Model3dConvertJob
 }
 
+// Every request to the worker is bounded, body included (undici aborts the body stream on the same
+// signal). An unbounded status report after a child died stalls the whole queue behind it.
+const STATUS_TIMEOUT_MS = 30_000
+// A floor of 1 MiB/s keeps a 1 GiB source under 20 minutes on a slow local R2.
+const MIN_BYTES_PER_MS = 1024 ** 2 / 1000
+
+export function transferTimeoutMs(bytes: number) {
+	return STATUS_TIMEOUT_MS + Math.ceil(bytes / MIN_BYTES_PER_MS)
+}
+
 export async function reportStatus(job: Model3dConvertJob, status: Model3dJobStatusRequest) {
 	const response = await fetch(job.statusUrl, {
 		method: 'POST',
 		headers: { authorization: `Bearer ${job.token}`, 'content-type': 'application/json' },
 		body: JSON.stringify(status),
+		signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
 	})
 	if (!response.ok) {
 		throw new Error(`status ${status.status} refused: ${response.status} ${await response.text()}`)
@@ -57,6 +68,7 @@ export async function reportStatus(job: Model3dConvertJob, status: Model3dJobSta
 async function fetchSource(job: Model3dConvertJob): Promise<Uint8Array> {
 	const response = await fetch(job.sourceUrl, {
 		headers: { authorization: `Bearer ${job.token}` },
+		signal: AbortSignal.timeout(transferTimeoutMs(job.limits.maxSourceBytes)),
 	})
 	if (!response.ok) {
 		throw new ConvertError('conversion_failed', `Source fetch failed: ${response.status}`)
@@ -78,6 +90,7 @@ async function putArtifact(job: Model3dConvertJob, name: Model3dArtifactName, bo
 		},
 		// Always ArrayBuffer-backed: gltfpack output and TextEncoder output.
 		body: body as Uint8Array<ArrayBuffer>,
+		signal: AbortSignal.timeout(transferTimeoutMs(body.byteLength)),
 	})
 	if (!response.ok) {
 		throw new Error(`${name} upload refused: ${response.status} ${await response.text()}`)
