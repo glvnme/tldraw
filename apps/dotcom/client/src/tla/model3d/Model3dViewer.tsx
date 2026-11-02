@@ -5,6 +5,8 @@ import { EditorPortal, TLShapeId, useEditor, useTranslation, useValue } from 'tl
 import { model3dUrl } from './api'
 import { loadLastModel3dCamera, saveLastModel3dCamera } from './cameraStorage'
 import { model3dMessages as messages } from './messages'
+import { revisionMessages } from './revisions/messages'
+import { enterModel3dSketch } from './sketch/session'
 import { useModel3dStatus } from './status'
 import { captureModel3dThumbnail } from './thumbnail'
 import { useModel3dGetToken } from './useModel3dGetToken'
@@ -179,6 +181,11 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 				</div>
 			) : null}
 			<div className={styles.viewerBar}>
+				{engine && !isReadonly && (
+					<button onClick={() => enterModel3dSketch(editor, shapeId)}>
+						{msg(revisionMessages.lockAndSketch)}
+					</button>
+				)}
 				{engine && !isReadonly && (
 					<button onClick={setDefaultView}>{msg(messages.setDefaultView)}</button>
 				)}

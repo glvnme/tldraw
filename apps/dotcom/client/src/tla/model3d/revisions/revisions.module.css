@@ -1,0 +1,191 @@
+.revision {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	outline: 1px solid var(--tl-color-muted-1);
+	background: var(--tl-color-muted-2);
+}
+
+.revisionImage {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	user-select: none;
+	pointer-events: none;
+}
+
+.heading {
+	position: absolute;
+	bottom: 100%;
+	left: 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+	padding-bottom: 4px;
+	transform-origin: bottom left;
+	color: var(--tl-color-text-1);
+	font: 12px/1.3 var(--tl-font-sans, sans-serif);
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.headingName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.badge {
+	padding: 1px 6px;
+	border-radius: 4px;
+	font-size: 11px;
+}
+
+.badgePublished {
+	background: var(--tl-color-selected);
+	color: var(--tl-color-selected-contrast, white);
+}
+
+.badgeDraft {
+	background: var(--tl-color-muted-1);
+	color: var(--tl-color-text-1);
+}
+
+/* Viewer */
+
+.letterbox {
+	position: absolute;
+	/* Darkens the bars around the letterboxed view. */
+	box-shadow: 0 0 0 100vmax rgba(30, 32, 40, 0.35);
+	pointer-events: none;
+}
+
+.overlay {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.list {
+	position: absolute;
+	bottom: 12px;
+	left: 12px;
+	display: flex;
+	flex-direction: column;
+	min-width: 160px;
+	max-height: 50%;
+	padding: 6px;
+	overflow-y: auto;
+	border-radius: 10px;
+	background: white;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+	font: 13px/1.2 var(--tl-font-sans, sans-serif);
+}
+
+.listHeading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 4px 6px 6px;
+	color: #666;
+	font-weight: 600;
+}
+
+.listClear {
+	padding: 0 4px;
+	border: none;
+	background: none;
+	color: #666;
+	font-size: 16px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.listItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px;
+	border: none;
+	border-radius: 6px;
+	background: none;
+	color: #1d1d1d;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.listItem:hover {
+	background: #f1f2f4;
+}
+
+.listItemActive,
+.listItemActive:hover {
+	background: #e6efff;
+}
+
+.listName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.draftTag {
+	padding: 1px 6px;
+	border-radius: 4px;
+	background: #eceef1;
+	color: #555;
+	font-size: 11px;
+}
+
+.returnToView {
+	position: absolute;
+	bottom: 16px;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.returnToView,
+.sketchBar button {
+	padding: 6px 12px;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	border-radius: 8px;
+	background: white;
+	color: #1d1d1d;
+	font: 13px/1.2 var(--tl-font-sans, sans-serif);
+	cursor: pointer;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Sketch mode */
+
+.sketchBar {
+	position: absolute;
+	top: 8px;
+	left: 50%;
+	/* Above tldraw's panels, like the viewer, below its menus. */
+	z-index: 350;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 4px 4px 12px;
+	transform: translateX(-50%);
+	border-radius: 10px;
+	background: var(--tl-color-panel, white);
+	box-shadow: var(--tl-shadow-2, 0 1px 3px rgba(0, 0, 0, 0.15));
+	pointer-events: all;
+}
+
+.sketchName {
+	color: var(--tl-color-text-1);
+	font: 600 13px/1.2 var(--tl-font-sans, sans-serif);
+	white-space: nowrap;
+}
+
+.sketchBar .primary {
+	border-color: transparent;
+	background: var(--tl-color-selected, #2f80ed);
+	color: white;
+}

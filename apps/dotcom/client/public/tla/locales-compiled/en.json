@@ -177,6 +177,12 @@
       "value": "Publish"
     }
   ],
+  "123eb0f02e": [
+    {
+      "type": 0,
+      "value": "Back to 3D"
+    }
+  ],
   "12a6766ba1": [
     {
       "type": 0,
@@ -791,10 +797,22 @@
       "value": "Follow these steps to import the content manually:"
     }
   ],
+  "7081460890": [
+    {
+      "type": 0,
+      "value": "Hide view"
+    }
+  ],
   "70a6facb9d": [
     {
       "type": 0,
       "value": "This week"
+    }
+  ],
+  "70df67b7f8": [
+    {
+      "type": 0,
+      "value": "Return to view"
     }
   ],
   "71a29b007b": [
@@ -1135,6 +1153,12 @@
     {
       "type": 0,
       "value": "."
+    }
+  ],
+  "9b9d8a976b": [
+    {
+      "type": 0,
+      "value": "Published"
     }
   ],
   "9bef626805": [
@@ -1574,6 +1598,16 @@
       "value": "Unable to publish the file."
     }
   ],
+  "c4b10df988": [
+    {
+      "type": 0,
+      "value": "Sketching "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
   "c4b39a1cc3": [
     {
       "type": 0,
@@ -1678,6 +1712,12 @@
       "value": " reacted to your comment"
     }
   ],
+  "d1165620af": [
+    {
+      "type": 0,
+      "value": "Lock view and sketch"
+    }
+  ],
   "d176108be4": [
     {
       "type": 0,
@@ -1774,6 +1814,12 @@
     {
       "type": 0,
       "value": "Go here to see the content"
+    }
+  ],
+  "d94b42030b": [
+    {
+      "type": 0,
+      "value": "Discard"
     }
   ],
   "dbbebf3c03": [
@@ -1902,6 +1948,12 @@
       "value": "Account menu"
     }
   ],
+  "ed4832a84e": [
+    {
+      "type": 0,
+      "value": "Views"
+    }
+  ],
   "ed75712b0e": [
     {
       "type": 0,
@@ -1944,6 +1996,12 @@
     {
       "type": 0,
       "value": "selected"
+    }
+  ],
+  "f03ab16cd5": [
+    {
+      "type": 0,
+      "value": "Draft"
     }
   ],
   "f09b16bc5f": [
