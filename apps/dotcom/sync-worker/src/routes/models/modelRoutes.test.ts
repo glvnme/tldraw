@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFakeKysely } from '../../test/fakeKysely'
 import { createFakeR2 } from '../../test/fakeR2'
 import { Environment } from '../../types'
-import { MODEL_PART_SIZE } from './modelConfig'
+import { MODEL_JOB_EXPIRY_MS, MODEL_PART_SIZE } from './modelConfig'
 
 vi.mock('../../postgres', () => ({ createPostgresConnectionPool: vi.fn() }))
 vi.mock('../../utils/tla/getAuth', () => ({ getAuth: vi.fn() }))
@@ -21,6 +21,7 @@ const SECRET = 'test-model-job-secret'
 const USER_ID = 'user-1'
 const GROUP_ID = 'group-1'
 const MODEL_ID = 'model-1'
+const JOB_ID = 'job-1'
 
 // Multipart on top of the shared fake, and stream bodies for put.
 function createModelsBucket() {
@@ -75,8 +76,9 @@ function modelRow(overrides: Partial<TlaModel> = {}): TlaModel {
 		errorCode: null,
 		manifest: null,
 		uploadId: null,
+		jobId: JOB_ID,
 		createdAt: 1,
-		updatedAt: 1,
+		updatedAt: Date.now(),
 		...overrides,
 	}
 }
@@ -105,8 +107,9 @@ function call(path: string, init: RequestInit & { headers?: Record<string, strin
 	} as unknown as ExecutionContext) as Promise<Response>
 }
 
-async function bearer(modelId = MODEL_ID, expiresAt = Date.now() + 60_000) {
-	return { authorization: `Bearer ${await signModel3dJobToken(SECRET, modelId, expiresAt)}` }
+async function bearer(modelId = MODEL_ID, expiresAt = Date.now() + 60_000, jobId = JOB_ID) {
+	const token = await signModel3dJobToken(SECRET, modelId, jobId, expiresAt)
+	return { authorization: `Bearer ${token}` }
 }
 
 beforeEach(() => {
@@ -143,7 +146,7 @@ describe('job token', () => {
 		[
 			'a token signed with another secret',
 			async () => ({
-				authorization: `Bearer ${await signModel3dJobToken('other', MODEL_ID, Date.now() + 60_000)}`,
+				authorization: `Bearer ${await signModel3dJobToken('other', MODEL_ID, JOB_ID, Date.now() + 60_000)}`,
 			}),
 		],
 	])('refuses %s on every converter route', async (_, headers) => {
@@ -180,7 +183,29 @@ describe('artifacts and job status', () => {
 		expect(response.status).toBe(200)
 		expect(await (await env.MODELS!.get(`m/${MODEL_ID}/manifest.json`))!.json()).toEqual(MANIFEST)
 		expect(db.queries.at(-1)!.sql).toMatch(/^update "model" set "manifest" = \$1/)
-		expect(db.queries.at(-1)!.parameters[0]).toEqual(MANIFEST)
+		expect(db.queries.at(-1)!.sql).toContain('"jobId" = $')
+		expect(db.queries.at(-1)!.parameters).toEqual([MANIFEST, expect.any(Number), MODEL_ID, JOB_ID])
+	})
+
+	it('refuses writes from a job that a retry has replaced', async () => {
+		const stale = await bearer(MODEL_ID, Date.now() + 60_000, 'job-0')
+		mockDb([[modelRow()]])
+		const artifact = await call(`/app/models/${MODEL_ID}/artifacts/model.glb`, {
+			method: 'PUT',
+			headers: { ...stale, 'content-length': '4' },
+			body: 'glTF',
+		})
+		expect(artifact.status).toBe(409)
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).toBeNull()
+
+		const db = mockDb([[modelRow()]])
+		const status = await call(`/app/models/${MODEL_ID}/job-status`, {
+			method: 'POST',
+			headers: stale,
+			body: JSON.stringify({ status: 'failed', errorCode: 'conversion_failed' }),
+		})
+		expect(status.status).toBe(409)
+		expect(db.queries).toHaveLength(1)
 	})
 
 	it('rejects an invalid manifest', async () => {
@@ -227,11 +252,12 @@ describe('artifacts and job status', () => {
 		const update = db.queries.at(-1)!
 		expect(update.sql).toContain('where "id" = $')
 		expect(update.sql).toContain('"status" in (')
-		expect(update.parameters).toEqual(expect.arrayContaining(['ready', 1, MODEL_ID]))
+		expect(update.sql).toContain('"jobId" = $')
+		expect(update.parameters).toEqual(expect.arrayContaining(['ready', 1, MODEL_ID, JOB_ID]))
 	})
 
 	it('refuses a status update for a model that already finished', async () => {
-		mockDb([[]])
+		mockDb([[modelRow({ status: 'ready' })]])
 		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
 			method: 'POST',
 			headers: await bearer(),
@@ -269,6 +295,30 @@ describe('user routes', () => {
 			errorCode: null,
 			manifest: null,
 		})
+	})
+
+	it('expires a job the converter abandoned so the client can retry', async () => {
+		const stale = modelRow({ updatedAt: Date.now() - MODEL_JOB_EXPIRY_MS - 1 })
+		const expired = { ...stale, status: 'failed', stage: null, errorCode: 'conversion_timeout' }
+		const db = mockDb([[{ ...stale, role: 'member' }], [expired]])
+		const response = await call(`/app/models/${MODEL_ID}`)
+		expect(await response.json()).toMatchObject({
+			status: 'failed',
+			errorCode: 'conversion_timeout',
+		})
+		const update = db.queries.at(-1)!
+		expect(update.sql).toContain('"status" in (')
+		expect(update.sql).toContain('"updatedAt" = $')
+		expect(update.parameters).toEqual(
+			expect.arrayContaining(['failed', 'conversion_timeout', MODEL_ID, stale.updatedAt])
+		)
+	})
+
+	it('leaves a job that reported recently alone', async () => {
+		const db = mockDb([[{ ...modelRow({ updatedAt: Date.now() - 60_000 }), role: 'member' }]])
+		const response = await call(`/app/models/${MODEL_ID}`)
+		expect(await response.json()).toMatchObject({ status: 'converting' })
+		expect(db.queries).toHaveLength(1)
 	})
 
 	it('refuses a source over the size cap at create', async () => {
@@ -345,6 +395,49 @@ describe('user routes', () => {
 		})
 	})
 
+	it('finishes a complete that was interrupted after R2 completed the upload', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		const uploading = modelRow({ status: 'uploading', stage: null, uploadId: 'gone' })
+		const db = mockDb([
+			[{ ...uploading, role: 'owner' }],
+			[uploading],
+			[{ ...uploading, status: 'queued' }],
+		])
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(null, { status: 202 }))
+		)
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [{ partNumber: 1, etag: 'etag-1' }] }),
+		})
+		expect(await response.json()).toEqual({ status: 'queued' })
+		expect(db.queries.at(-1)!.parameters).toEqual(
+			expect.arrayContaining(['queued', 3, 'uploading'])
+		)
+	})
+
+	it('refuses an interrupted complete whose source does not match the declared size', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2]))
+		const uploading = modelRow({ status: 'uploading', stage: null, uploadId: 'gone' })
+		mockDb([[{ ...uploading, role: 'owner' }], [uploading]])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [{ partNumber: 1, etag: 'etag-1' }] }),
+		})
+		expect(response.status).toBe(400)
+		expect(await response.json()).toMatchObject({ error: 'upload_incomplete' })
+	})
+
+	it('refuses to complete an upload with no parts', async () => {
+		mockDb([[{ ...modelRow({ status: 'uploading', uploadId: 'upload-1' }), role: 'owner' }]])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [] }),
+		})
+		expect(response.status).toBe(400)
+	})
+
 	it('refuses a part without Content-Length', async () => {
 		mockDb([[{ ...modelRow({ status: 'uploading', uploadId: 'upload-1' }), role: 'owner' }]])
 		const response = await call(`/app/models/${MODEL_ID}/parts/1`, {
@@ -366,7 +459,7 @@ describe('user routes', () => {
 
 		const response = await call(`/app/models/${MODEL_ID}/complete`, {
 			method: 'POST',
-			body: JSON.stringify({ parts: [{ partNumber: 1, etag: 'etag-1' }] }),
+			body: JSON.stringify({ parts: [] }),
 		})
 		expect(await response.json()).toEqual({ status: 'queued' })
 		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).toBeNull()
@@ -380,6 +473,47 @@ describe('user routes', () => {
 		expect(markFailed.parameters).toEqual(
 			expect.arrayContaining(['failed', 'converter_unavailable', MODEL_ID, 'queued'])
 		)
+	})
+
+	it('leaves the artifacts alone when a racing retry claimed the model first', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		await env.MODELS!.put(`m/${MODEL_ID}/model.glb`, new Uint8Array([1]))
+		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
+		// The claim updates no row; the reload sees the winner's attempt.
+		mockDb([[{ ...failed, role: 'member' }], [], [modelRow({ status: 'converting' })]])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [] }),
+		})
+		expect(await response.json()).toEqual({ status: 'converting' })
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).not.toBeNull()
+		expect(waitUntil).not.toHaveBeenCalled()
+	})
+
+	it('returns a claimed retry to failed if the old artifacts cannot be cleared', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		env.MODELS!.delete = vi.fn(async () => Promise.reject(new Error('R2 down')))
+		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
+		const db = mockDb([
+			[{ ...failed, role: 'member' }],
+			[{ ...failed, status: 'queued', jobId: 'job-2' }],
+		])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [] }),
+		})
+		expect(response.status).toBe(500)
+		const revert = db.queries.at(-1)!
+		expect(revert.sql).toMatch(/^update "model" set "status" = \$1, "errorCode" = \$2/)
+		expect(revert.parameters).toEqual([
+			'failed',
+			'conversion_failed',
+			expect.any(Number),
+			MODEL_ID,
+			'job-2',
+			'queued',
+		])
+		expect(waitUntil).not.toHaveBeenCalled()
 	})
 
 	it('treats complete on a converting model as a no-op', async () => {

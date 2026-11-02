@@ -17,7 +17,7 @@ export function buildGlbResponse(object: R2Object | R2ObjectBody, request: Reque
 	// R2 answers a failed precondition with the object's metadata and no body.
 	if (!('body' in object) || !object.body) {
 		return new Response(null, {
-			status: request.headers.has('if-none-match') ? 304 : 412,
+			status: failedPreconditionStatus(object, request.headers),
 			headers,
 		})
 	}
@@ -33,6 +33,26 @@ export function buildGlbResponse(object: R2Object | R2ObjectBody, request: Reque
 		`bytes ${range.offset}-${range.offset + range.length - 1}/${object.size}`
 	)
 	return new Response(object.body, { status: 206, headers })
+}
+
+/**
+ * R2 does not say which precondition failed. RFC 9110 section 13.2.2 evaluates If-Match (or else
+ * If-Unmodified-Since) first and answers 412; only once those pass does a failed If-None-Match or
+ * If-Modified-Since mean the cached copy is current, which is a 304.
+ */
+export function failedPreconditionStatus(object: R2Object, headers: Headers): 304 | 412 {
+	const ifMatch = headers.get('if-match')
+	if (ifMatch !== null) {
+		const tags = ifMatch.split(',').map((tag) => tag.trim())
+		if (!tags.includes('*') && !tags.includes(object.httpEtag)) return 412
+	} else {
+		const since = Date.parse(headers.get('if-unmodified-since') ?? '')
+		// HTTP dates have whole-second precision.
+		if (Number.isFinite(since) && Math.floor(object.uploaded.getTime() / 1000) * 1000 > since) {
+			return 412
+		}
+	}
+	return 304
 }
 
 export function resolveRange(

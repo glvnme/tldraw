@@ -20,6 +20,8 @@ export async function hasWriteAccessToFile(
 		.executeTakeFirst()
 	if (!file || file.isDeleted) return false
 	if (file.shared && file.sharedLinkType === 'edit') return true
+	// The home workspace's id is its owner's user id, and it has no group_user row.
+	if (userId && file.owningGroupId === userId) return true
 	if (userId && file.owningGroupId) {
 		return can(await getRole(db, userId, file.owningGroupId), 'accessFiles')
 	}

@@ -14,6 +14,11 @@ export const MODEL_JOB_LIMITS: Model3dConvertJob['limits'] = {
 	timeoutMs: 30 * 60_000,
 }
 
+// A job that has not reported for this long is abandoned: the converter kills a job at its timeout
+// and reports on start, so a live one always reports sooner. A job queued behind more than this
+// much work is expired too; its Retry replaces the queued entry rather than adding one.
+export const MODEL_JOB_EXPIRY_MS = MODEL_JOB_LIMITS.timeoutMs + 5 * 60_000
+
 // The converter runs one job at a time, so a token must outlive the queue ahead of it.
 export const MODEL_JOB_TOKEN_TTL_MS = 24 * 60 * 60_000
 

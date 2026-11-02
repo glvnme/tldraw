@@ -487,6 +487,8 @@ export interface TlaModel {
 	errorCode: Model3dErrorCode | null
 	manifest: Model3dManifest | null
 	uploadId: string | null
+	/** The conversion attempt the current job token is scoped to (migration 055). */
+	jobId: string | null
 	createdAt: number
 	updatedAt: number
 }

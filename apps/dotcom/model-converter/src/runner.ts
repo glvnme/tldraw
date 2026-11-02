@@ -17,10 +17,11 @@ const JOB_PROCESS = fileURLToPath(new URL('./jobProcess.ts', import.meta.url))
 
 /**
  * Runs a job in its own process so a crash, an out-of-memory abort or a WASM trap cannot take the
- * service down, and kills it at `limits.timeoutMs`. Always resolves; reports the failure itself if
- * the child exits without reporting a terminal status.
+ * service down, and kills it at `limits.timeoutMs` or when `signal` aborts. Always resolves; reports
+ * the failure itself if the child exits without reporting a terminal status, unless it was stopped
+ * for a newer attempt, whose token the worker now holds the row for.
  */
-export function runJobInChild(job: Model3dConvertJob): Promise<void> {
+export function runJobInChild(job: Model3dConvertJob, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve) => {
 		const child = fork(JOB_PROCESS, [], { execArgv: childExecArgv() })
 		let reported = false
@@ -30,12 +31,15 @@ export function runJobInChild(job: Model3dConvertJob): Promise<void> {
 			timedOut = true
 			child.kill('SIGKILL')
 		}, job.limits.timeoutMs)
+		const stop = () => child.kill('SIGKILL')
+		signal?.addEventListener('abort', stop, { once: true })
 
 		const finish = async (reason: string) => {
 			if (finished) return
 			finished = true
 			clearTimeout(timer)
-			if (!reported) {
+			signal?.removeEventListener('abort', stop)
+			if (!reported && !signal?.aborted) {
 				const errorCode = timedOut ? 'conversion_timeout' : 'conversion_failed'
 				const message = timedOut ? `Timed out after ${job.limits.timeoutMs} ms` : reason
 				console.error(`[${job.modelId}] ${errorCode}: ${message}`)
