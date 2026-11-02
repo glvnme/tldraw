@@ -520,6 +520,12 @@
       "value": "Reload"
     }
   ],
+  "4d783c1889": [
+    {
+      "type": 0,
+      "value": "Republish"
+    }
+  ],
   "5097d89907": [
     {
       "type": 0,
@@ -753,6 +759,12 @@
     {
       "type": 0,
       "value": "A new version of tldraw is available. Please reload the page to continue."
+    }
+  ],
+  "67ed6ddb7d": [
+    {
+      "type": 0,
+      "value": "Edited"
     }
   ],
   "681e10aecb": [
@@ -1183,6 +1195,12 @@
     {
       "type": 0,
       "value": "Publish this file"
+    }
+  ],
+  "9db2a750da": [
+    {
+      "type": 0,
+      "value": "Snapshot not saved"
     }
   ],
   "9e076f5885": [
@@ -1636,6 +1654,12 @@
     {
       "type": 0,
       "value": "Dismiss"
+    }
+  ],
+  "cbfa011ed8": [
+    {
+      "type": 0,
+      "value": "Saving snapshot…"
     }
   ],
   "cceaefbc20": [

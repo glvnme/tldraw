@@ -5,7 +5,7 @@ import {
 } from '@tldraw/dotcom-shared'
 import { atom, Atom, Editor, TLRecord, TLShapeId, WeakCache } from 'tldraw'
 import { openModel3dViewer } from '../viewerState'
-import { computeStrokeHash } from './strokeHash'
+import { computeContentKey } from './strokeHash'
 
 export interface Model3dRevisionView {
 	revisionId: TLShapeId
@@ -64,6 +64,7 @@ export function getRevisionContentRecords(editor: Editor, revisionId: TLShapeId)
 	return [...shapes, ...bindings]
 }
 
-export function hashRevisionContent(editor: Editor, revisionId: TLShapeId) {
-	return computeStrokeHash(getRevisionContentRecords(editor, revisionId))
+/** Changes whenever the revision's content does, whichever tab or undo changed it. */
+export function getRevisionContentKey(editor: Editor, revisionId: TLShapeId) {
+	return computeContentKey(getRevisionContentRecords(editor, revisionId))
 }

@@ -7,7 +7,7 @@ import {
 	nextRevisionName,
 	placeRevision,
 } from './layout'
-import { computeStrokeHash } from './strokeHash'
+import { computeContentKey, computeStrokeHash } from './strokeHash'
 
 describe('computeStrokeHash', () => {
 	const a = { id: 'shape:a', type: 'draw', x: 1, y: 2, props: { color: 'red', w: 1 }, meta: {} }
@@ -138,5 +138,36 @@ describe('isCameraAtPose', () => {
 		const far = { ...pose, position: [1000, 0, 0] as [number, number, number] }
 		expect(isCameraAtPose({ ...far, position: [1000, 1, 0] }, far)).toBe(true)
 		expect(isCameraAtPose({ ...far, position: [1000, 3, 0] }, far)).toBe(false)
+	})
+})
+
+describe('computeContentKey', () => {
+	const a = { id: 'shape:a', type: 'draw', x: 1, y: 2, props: { color: 'red' }, meta: {} }
+	const b = { id: 'shape:b', type: 'arrow', x: 3, y: 4, props: { color: 'blue' }, meta: {} }
+
+	it('ignores record order, key order, locking and meta', () => {
+		const key = computeContentKey([a, b])
+		const lockedB = { ...b, isLocked: true, meta: { x: 1 } }
+		const reorderedA = {
+			meta: {},
+			props: { color: 'red' },
+			y: 2,
+			x: 1,
+			type: 'draw',
+			id: 'shape:a',
+		}
+		expect(computeContentKey([b, a])).toBe(key)
+		expect(computeContentKey([lockedB, a])).toBe(key)
+		expect(computeContentKey([reorderedA, b])).toBe(key)
+	})
+
+	it('changes when any record changes, is added or is removed', () => {
+		const key = computeContentKey([a, b])
+		const movedA = { ...a, x: 1.5 }
+		const c = { ...b, id: 'shape:c' }
+		expect(computeContentKey([movedA, b])).not.toBe(key)
+		expect(computeContentKey([a])).not.toBe(key)
+		expect(computeContentKey([a, b, c])).not.toBe(key)
+		expect(computeContentKey([])).not.toBe(key)
 	})
 })
