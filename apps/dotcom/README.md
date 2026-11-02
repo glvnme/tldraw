@@ -6,6 +6,12 @@ You'll need a clerk publishable and secret key.
 
 In `sync-worker/.dev.vars`, set `CLERK_PUBLISHABLE_KEY` & `CLERK_SECRET_KEY`. In `client/.env.local`, set `VITE_CLERK_PUBLISHABLE_KEY`.
 
+### Running without Clerk
+
+`pnpm dev-app:local` runs the same stack signed in as one fixed local user (`dev@localhost`), with no Clerk keys. It sets `LOCAL_DEV_AUTH=1` for the sync worker and `VITE_LOCAL_DEV_AUTH=1` for the client; set them yourself to combine with other options. The client swaps `@clerk/clerk-react` for [a shim](client/src/localDevAuth/clerkShim.tsx) and the worker accepts its fixed token in place of a Clerk session. Every permission check still runs against that user. The worker honours the flag only under `wrangler dev`, and `vite build` ignores it.
+
+Sign-in, sign-out (it just reloads), signed-out pages, the admin pages, and the MCP OAuth flow need Clerk and don't work in this mode.
+
 The dev stack is orchestrated by [process-compose](https://github.com/F1bonacc1/process-compose). You don't need to install it — `pnpm dev-app` fetches the pinned binary on first use. Run the app from the repo root:
 
 ```bash
