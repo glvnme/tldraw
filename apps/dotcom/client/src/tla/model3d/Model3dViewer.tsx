@@ -5,6 +5,13 @@ import { EditorPortal, TLShapeId, useEditor, useTranslation, useValue } from 'tl
 import { model3dUrl } from './api'
 import { loadLastModel3dCamera, saveLastModel3dCamera } from './cameraStorage'
 import { model3dMessages as messages } from './messages'
+import { revisionMessages } from './revisions/messages'
+import {
+	Model3dRevisionsPanel,
+	letterboxStyle,
+	useModel3dRevisionLetterbox,
+} from './revisions/RevisionsPanel'
+import { enterModel3dSketch } from './sketch/session'
 import { useModel3dStatus } from './status'
 import { captureModel3dThumbnail } from './thumbnail'
 import { useModel3dGetToken } from './useModel3dGetToken'
@@ -84,6 +91,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 	const [attempt, setAttempt] = useState(0)
 	const [load, setLoad] = useState<LoadState>({ kind: 'loading', progress: 0 })
 	const [engine, setEngine] = useState<Model3dViewerEngine | null>(null)
+	const letterbox = useModel3dRevisionLetterbox(modelId)
 
 	useEffect(() => {
 		const container = rContainer.current
@@ -152,7 +160,12 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 
 	return (
 		<>
-			<div ref={rContainer} className={styles.viewerCanvas} />
+			<div
+				ref={rContainer}
+				className={styles.viewerCanvas}
+				style={letterbox ? letterboxStyle(letterbox) : undefined}
+			/>
+			{engine && <Model3dRevisionsPanel modelId={modelId} handle={engine} />}
 			{!isReady ? (
 				<div className={styles.viewerMessage}>
 					{msg(
@@ -179,6 +192,11 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 				</div>
 			) : null}
 			<div className={styles.viewerBar}>
+				{engine && !isReadonly && (
+					<button onClick={() => enterModel3dSketch(editor, shapeId)}>
+						{msg(revisionMessages.lockAndSketch)}
+					</button>
+				)}
 				{engine && !isReadonly && (
 					<button onClick={setDefaultView}>{msg(messages.setDefaultView)}</button>
 				)}
