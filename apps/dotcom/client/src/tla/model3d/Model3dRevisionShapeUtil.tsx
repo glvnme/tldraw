@@ -72,17 +72,26 @@ export class Model3dRevisionShapeUtil extends BaseFrameLikeShapeUtil<TLModel3dRe
 		})
 	}
 
+	// The overlay is drawn axis-aligned over the 3D view, so the snapshot keeps its size and angle.
 	override canResize() {
 		return false
 	}
 
-	// A locked frame-like shape refuses new children and locks every stroke inside it.
+	override hideRotateHandle() {
+		return true
+	}
+
+	// Published strokes are frozen; `strokeHash` records exactly which ones.
+	override canReceiveNewChildrenOfType(shape: TLModel3dRevisionShape) {
+		return shape.props.publishedAt === null
+	}
+
 	override onBeforeCreate(shape: TLModel3dRevisionShape) {
-		return shape.isLocked ? { ...shape, isLocked: false } : undefined
+		return keepUnlockedAndUpright(shape)
 	}
 
 	override onBeforeUpdate(_prev: TLModel3dRevisionShape, next: TLModel3dRevisionShape) {
-		return next.isLocked ? { ...next, isLocked: false } : undefined
+		return keepUnlockedAndUpright(next)
 	}
 
 	// The base class lets arrows escape the clip; strokes over a snapshot must all stay inside.
@@ -132,6 +141,14 @@ export class Model3dRevisionShapeUtil extends BaseFrameLikeShapeUtil<TLModel3dRe
 		path.rect(0, 0, shape.props.w, shape.props.h)
 		return path
 	}
+}
+
+// A locked frame-like shape refuses new children and locks every stroke inside it. Rotating a
+// selection that includes the revision would otherwise turn it.
+function keepUnlockedAndUpright(shape: TLModel3dRevisionShape) {
+	return shape.isLocked || shape.rotation !== 0
+		? { ...shape, isLocked: false, rotation: 0 }
+		: undefined
 }
 
 function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
