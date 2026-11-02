@@ -1,7 +1,13 @@
-import { MODEL3D_SHAPE_TYPE, TLModel3dShape, model3dPaths } from '@tldraw/dotcom-shared'
+import {
+	MODEL3D_SHAPE_TYPE,
+	Model3dCamera,
+	TLModel3dShape,
+	model3dPaths,
+} from '@tldraw/dotcom-shared'
 import classNames from 'classnames'
 import { useEffect, useRef, useState } from 'react'
 import { EditorPortal, TLShapeId, useEditor, useTranslation, useValue } from 'tldraw'
+import { useTldrawCurrentUser } from '../hooks/useUser'
 import { model3dUrl } from './api'
 import { loadLastModel3dCamera, saveLastModel3dCamera } from './cameraStorage'
 import { model3dMessages as messages } from './messages'
@@ -24,6 +30,8 @@ type LoadState =
 	| { kind: 'ready' }
 	| { kind: 'error'; message: string }
 	| { kind: 'context-lost' }
+
+const CAMERA_SAVE_DELAY_MS = 300
 
 export function Model3dViewer({ state }: { state: Model3dViewerState }) {
 	const editor = useEditor()
@@ -84,6 +92,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 	const editor = useEditor()
 	const msg = useTranslation()
 	const getToken = useModel3dGetToken()
+	const userId = useTldrawCurrentUser()?.id ?? null
 	const snapshot = useModel3dStatus(modelId, getToken)
 	const isReady = snapshot.kind === 'ok' && snapshot.status.status === 'ready'
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
@@ -100,6 +109,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 		const abort = new AbortController()
 		const { signal } = abort
 		let created: Model3dViewerEngine | null = null
+		let stopCameraSaves: (() => void) | null = null
 		setLoad({ kind: 'loading', progress: 0 })
 
 		void (async () => {
@@ -114,7 +124,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 					container,
 					glbUrl: model3dUrl(model3dPaths.glb(modelId)),
 					token,
-					initialCamera: loadLastModel3dCamera(modelId) ?? defaultView,
+					initialCamera: loadLastModel3dCamera(modelId, userId) ?? defaultView,
 					signal,
 					onProgress: (loaded, total) => {
 						if (total && !signal.aborted) setLoad({ kind: 'loading', progress: loaded / total })
@@ -130,6 +140,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 				})
 				if (signal.aborted) return
 				created = engine
+				stopCameraSaves = saveCameraChanges(engine, modelId, userId)
 				setEngine(engine)
 				setLoad({ kind: 'ready' })
 				getModel3dViewerHandle(editor).set(engine)
@@ -144,13 +155,13 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 
 		return () => {
 			abort.abort()
+			stopCameraSaves?.()
 			if (!created) return
-			saveLastModel3dCamera(modelId, created.getCamera())
 			if (getModel3dViewerHandle(editor).get() === created) getModel3dViewerHandle(editor).set(null)
 			created.dispose()
 			setEngine(null)
 		}
-	}, [editor, shapeId, modelId, isReady, attempt, getToken])
+	}, [editor, shapeId, modelId, isReady, attempt, getToken, userId])
 
 	const setDefaultView = () => {
 		if (!engine) return
@@ -212,4 +223,26 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 			</div>
 		</>
 	)
+}
+
+/** Saves the last pose shortly after it settles, and right away when the page goes away. */
+function saveCameraChanges(engine: Model3dViewerEngine, modelId: string, userId: string | null) {
+	let pending: Model3dCamera | null = null
+	let timer: ReturnType<typeof setTimeout> | undefined
+	const flush = () => {
+		clearTimeout(timer)
+		if (pending) saveLastModel3dCamera(modelId, userId, pending)
+		pending = null
+	}
+	const unsubscribe = engine.onCameraChange((camera) => {
+		pending = camera
+		clearTimeout(timer)
+		timer = setTimeout(flush, CAMERA_SAVE_DELAY_MS)
+	})
+	window.addEventListener('pagehide', flush)
+	return () => {
+		flush()
+		unsubscribe()
+		window.removeEventListener('pagehide', flush)
+	}
 }
