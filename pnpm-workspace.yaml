@@ -44,6 +44,9 @@ minimumReleaseAgeExclude:
   # Pulled in by @rocicorp/zero@1.11.2. Remove once they clear the gate (2026-10-23T20:25Z).
   - '@opentelemetry/auto-instrumentations-node@0.81.2'
   - '@opentelemetry/instrumentation-winston@0.68.1'
+  # The 3D viewer is pinned to r187 (reversedDepthBuffer). Remove once they clear the gate (2026-11-06T18:05Z).
+  - 'three@0.187.0'
+  - '@types/three@0.187.0'
 
 overrides:
   '@types/node': ^22.15.31
