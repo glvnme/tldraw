@@ -14,6 +14,9 @@
   "043973ec1f": {
     "translation": "Still having trouble? {GetHelpLink}"
   },
+  "048deed4ab": {
+    "translation": "The model file is missing."
+  },
   "04a2dd56d6": {
     "translation": "Invite teammates"
   },
@@ -73,6 +76,9 @@
   },
   "13ddd375ad": {
     "translation": "Export as"
+  },
+  "14a099002a": {
+    "translation": "The model changed during the conversion."
   },
   "14b03eeeb5": {
     "translation": "Notification options"
@@ -293,6 +299,9 @@
   "61057a0c84": {
     "translation": "Later"
   },
+  "61760c0cdc": {
+    "translation": "Something went wrong while converting."
+  },
   "61fb03fd7b": {
     "translation": "{count, plural, one {Someone reacted to your comment} other {# people reacted to your comment}}"
   },
@@ -307,6 +316,9 @@
   },
   "63a6a88c06": {
     "translation": "Refresh"
+  },
+  "649900e4b4": {
+    "translation": "The converter rejected the request."
   },
   "6609dd239e": {
     "translation": "Something went wrong"
@@ -374,6 +386,9 @@
   "764671e008": {
     "translation": "Chat with us on Discord"
   },
+  "7650a76b0e": {
+    "translation": "The conversion took too long."
+  },
   "7697920637": {
     "translation": "Please reload"
   },
@@ -400,6 +415,9 @@
   },
   "7c0747a5df": {
     "translation": "Open tldraw"
+  },
+  "7c4824e84e": {
+    "translation": "Draco-compressed GLB is not supported. Export it without Draco."
   },
   "7cb5f8b4a5": {
     "translation": "Forget"
@@ -560,6 +578,9 @@
   "aaec8f7cde": {
     "translation": "Someone"
   },
+  "aaf52153ae": {
+    "translation": "The conversion was not authorized."
+  },
   "ab0df9ba36": {
     "translation": "File limit reached"
   },
@@ -590,6 +611,12 @@
   },
   "b48becc771": {
     "translation": "Enable invites"
+  },
+  "b49317394d": {
+    "translation": "You are signed out."
+  },
+  "b52fdae8ba": {
+    "translation": "Something went wrong on the server."
   },
   "b5ae502a34": {
     "translation": "Could not load the model: {error}"
@@ -717,6 +744,12 @@
   "dbf9b24193": {
     "translation": "Leave workspace"
   },
+  "de9af1da1a": {
+    "translation": "This file format is not supported."
+  },
+  "debdfc8c88": {
+    "translation": "The model is too large to convert."
+  },
   "defc490d7b": {
     "translation": "Retry failed: {error}"
   },
@@ -743,6 +776,9 @@
   },
   "e81c4e4f2b": {
     "translation": "or"
+  },
+  "e958534988": {
+    "translation": "The converter is not running."
   },
   "ea0f3fa522": {
     "translation": "The model could not be converted."
@@ -818,6 +854,9 @@
   },
   "fc9d47046b": {
     "translation": "Are you sure you want to leave this workspace?"
+  },
+  "fd5f103140": {
+    "translation": "The upload did not finish."
   },
   "fde5639174": {
     "translation": "Preparing the model…"

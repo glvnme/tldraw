@@ -1,3 +1,4 @@
+import type { Model3dErrorCode } from '@tldraw/dotcom-shared'
 import { defineMessages } from 'tldraw'
 
 export const model3dMessages = defineMessages({
@@ -30,3 +31,22 @@ export const model3dMessages = defineMessages({
 	tooLarge: { defaultMessage: 'Models must be 1 GB or smaller.' },
 	empty: { defaultMessage: 'The file is empty.' },
 })
+
+export const model3dErrorMessages = defineMessages({
+	unauthorized: { defaultMessage: 'You are signed out.' },
+	forbidden: { defaultMessage: 'You don’t have access to this model.' },
+	not_found: { defaultMessage: 'The model file is missing.' },
+	bad_request: { defaultMessage: 'The converter rejected the request.' },
+	unsupported_format: { defaultMessage: 'This file format is not supported.' },
+	draco_unsupported: {
+		defaultMessage: 'Draco-compressed GLB is not supported. Export it without Draco.',
+	},
+	too_large: { defaultMessage: 'The model is too large to convert.' },
+	invalid_state: { defaultMessage: 'The model changed during the conversion.' },
+	upload_incomplete: { defaultMessage: 'The upload did not finish.' },
+	invalid_token: { defaultMessage: 'The conversion was not authorized.' },
+	converter_unavailable: { defaultMessage: 'The converter is not running.' },
+	conversion_failed: { defaultMessage: 'Something went wrong while converting.' },
+	conversion_timeout: { defaultMessage: 'The conversion took too long.' },
+	internal_error: { defaultMessage: 'Something went wrong on the server.' },
+}) satisfies Record<Model3dErrorCode, unknown>

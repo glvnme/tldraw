@@ -156,7 +156,7 @@ async function prepareInput(
 			}
 			const extensions = [...(json.extensionsUsed ?? []), ...(json.extensionsRequired ?? [])]
 			if (extensions.includes('KHR_draco_mesh_compression')) {
-				throw new ConvertError('unsupported_format', 'Draco-compressed GLB is not supported')
+				throw new ConvertError('draco_unsupported', 'Draco-compressed GLB is not supported')
 			}
 			return {
 				name: 'in.glb',

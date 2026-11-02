@@ -1,5 +1,6 @@
 import {
 	MODEL3D_SHAPE_TYPE,
+	Model3dErrorCode,
 	TLModel3dShape,
 	model3dShapeMigrations,
 	model3dShapeProps,
@@ -17,7 +18,7 @@ import {
 	useTranslation,
 	useValue,
 } from 'tldraw'
-import { model3dMessages as messages } from './messages'
+import { model3dErrorMessages, model3dMessages as messages } from './messages'
 import { useModel3dStatus, model3dStatusPoller } from './status'
 import { model3dLocalUploads, requeueModel3d, retryModel3dUpload } from './upload'
 import { useModel3dGetToken } from './useModel3dGetToken'
@@ -30,6 +31,17 @@ const STAGE_MESSAGES = {
 	optimizing: messages.optimizing,
 	uploading: messages.saving,
 } as const
+
+// The rest are about the file itself, so the same source fails the same way again.
+const RETRYABLE_ERRORS: ReadonlySet<Model3dErrorCode | null> = new Set([
+	null,
+	'invalid_state',
+	'invalid_token',
+	'converter_unavailable',
+	'conversion_failed',
+	'conversion_timeout',
+	'internal_error',
+])
 
 export class Model3dShapeUtil extends BaseBoxShapeUtil<TLModel3dShape> {
 	static override type = MODEL3D_SHAPE_TYPE
@@ -170,15 +182,22 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	}
 
 	if (status?.status === 'failed') {
+		const { errorCode } = status
+		const errorMessage =
+			errorCode && Object.hasOwn(model3dErrorMessages, errorCode)
+				? msg(model3dErrorMessages[errorCode])
+				: (errorCode ?? '')
 		return (
 			<Card name={name}>
 				<span className={styles.error}>
-					{msg(messages.conversionFailed, { error: status.errorCode ?? '' })}
+					{msg(messages.conversionFailed, { error: errorMessage })}
 				</span>
 				{retryError && (
 					<span className={styles.error}>{msg(messages.retryFailed, { error: retryError })}</span>
 				)}
-				{!isReadonly && <CardButton onClick={retryConversion}>{msg(messages.retry)}</CardButton>}
+				{!isReadonly && RETRYABLE_ERRORS.has(errorCode) && (
+					<CardButton onClick={retryConversion}>{msg(messages.retry)}</CardButton>
+				)}
 			</Card>
 		)
 	}

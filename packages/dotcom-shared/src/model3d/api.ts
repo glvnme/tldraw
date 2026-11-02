@@ -8,20 +8,24 @@ export type Model3dConvertStage = 'fetching' | 'parsing' | 'optimizing' | 'uploa
 
 export type Model3dArtifactName = 'model.glb' | 'manifest.json'
 
-export type Model3dErrorCode =
-	| 'unauthorized'
-	| 'forbidden'
-	| 'not_found'
-	| 'bad_request'
-	| 'unsupported_format'
-	| 'too_large'
-	| 'invalid_state'
-	| 'upload_incomplete'
-	| 'invalid_token'
-	| 'converter_unavailable'
-	| 'conversion_failed'
-	| 'conversion_timeout'
-	| 'internal_error'
+export const MODEL3D_ERROR_CODES = [
+	'unauthorized',
+	'forbidden',
+	'not_found',
+	'bad_request',
+	'unsupported_format',
+	'draco_unsupported',
+	'too_large',
+	'invalid_state',
+	'upload_incomplete',
+	'invalid_token',
+	'converter_unavailable',
+	'conversion_failed',
+	'conversion_timeout',
+	'internal_error',
+] as const
+
+export type Model3dErrorCode = (typeof MODEL3D_ERROR_CODES)[number]
 
 export interface Model3dErrorResponse {
 	error: Model3dErrorCode

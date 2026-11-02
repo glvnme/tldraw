@@ -1,9 +1,9 @@
 import {
 	CompleteUploadRequest,
 	CreateModelRequest,
+	MODEL3D_ERROR_CODES,
 	MODEL3D_SOURCE_FORMATS,
 	Model3dConvertStage,
-	Model3dErrorCode,
 	Model3dJobStatusRequest,
 	Model3dManifest,
 	Model3dSourceFormat,
@@ -14,21 +14,6 @@ import { MODEL_MAX_NAME_LENGTH } from './modelConfig'
 // shapes are small.
 
 const STAGES: readonly Model3dConvertStage[] = ['fetching', 'parsing', 'optimizing', 'uploading']
-const ERROR_CODES: readonly Model3dErrorCode[] = [
-	'unauthorized',
-	'forbidden',
-	'not_found',
-	'bad_request',
-	'unsupported_format',
-	'too_large',
-	'invalid_state',
-	'upload_incomplete',
-	'invalid_token',
-	'converter_unavailable',
-	'conversion_failed',
-	'conversion_timeout',
-	'internal_error',
-]
 const UNITS: readonly Model3dManifest['units'][] = ['m', 'mm', 'cm', 'in', 'ft', 'unknown']
 
 type Obj = Record<string, unknown>
@@ -94,7 +79,7 @@ export function parseJobStatusRequest(body: unknown): Model3dJobStatusRequest | 
 			return { status: 'ready' }
 		case 'failed': {
 			const { errorCode, message } = body
-			if (!isOneOf(ERROR_CODES, errorCode)) return null
+			if (!isOneOf(MODEL3D_ERROR_CODES, errorCode)) return null
 			return {
 				status: 'failed',
 				errorCode,

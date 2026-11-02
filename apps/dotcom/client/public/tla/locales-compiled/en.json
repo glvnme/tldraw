@@ -53,6 +53,12 @@
       "value": "GetHelpLink"
     }
   ],
+  "048deed4ab": [
+    {
+      "type": 0,
+      "value": "The model file is missing."
+    }
+  ],
   "04a2dd56d6": [
     {
       "type": 0,
@@ -193,6 +199,12 @@
     {
       "type": 0,
       "value": "Export as"
+    }
+  ],
+  "14a099002a": [
+    {
+      "type": 0,
+      "value": "The model changed during the conversion."
     }
   ],
   "14b03eeeb5": [
@@ -696,6 +708,12 @@
       "value": "Later"
     }
   ],
+  "61760c0cdc": [
+    {
+      "type": 0,
+      "value": "Something went wrong while converting."
+    }
+  ],
   "61fb03fd7b": [
     {
       "offset": 0,
@@ -747,6 +765,12 @@
     {
       "type": 0,
       "value": "Refresh"
+    }
+  ],
+  "649900e4b4": [
+    {
+      "type": 0,
+      "value": "The converter rejected the request."
     }
   ],
   "6609dd239e": [
@@ -881,6 +905,12 @@
       "value": "Chat with us on Discord"
     }
   ],
+  "7650a76b0e": [
+    {
+      "type": 0,
+      "value": "The conversion took too long."
+    }
+  ],
   "7697920637": [
     {
       "type": 0,
@@ -933,6 +963,12 @@
     {
       "type": 0,
       "value": "Open tldraw"
+    }
+  ],
+  "7c4824e84e": [
+    {
+      "type": 0,
+      "value": "Draco-compressed GLB is not supported. Export it without Draco."
     }
   ],
   "7cb5f8b4a5": [
@@ -1363,6 +1399,12 @@
       "value": "Someone"
     }
   ],
+  "aaf52153ae": [
+    {
+      "type": 0,
+      "value": "The conversion was not authorized."
+    }
+  ],
   "ab0df9ba36": [
     {
       "type": 0,
@@ -1442,6 +1484,18 @@
     {
       "type": 0,
       "value": "Enable invites"
+    }
+  ],
+  "b49317394d": [
+    {
+      "type": 0,
+      "value": "You are signed out."
+    }
+  ],
+  "b52fdae8ba": [
+    {
+      "type": 0,
+      "value": "Something went wrong on the server."
     }
   ],
   "b5ae502a34": [
@@ -1858,6 +1912,18 @@
       "value": "Leave workspace"
     }
   ],
+  "de9af1da1a": [
+    {
+      "type": 0,
+      "value": "This file format is not supported."
+    }
+  ],
+  "debdfc8c88": [
+    {
+      "type": 0,
+      "value": "The model is too large to convert."
+    }
+  ],
   "defc490d7b": [
     {
       "type": 0,
@@ -1938,6 +2004,12 @@
     {
       "type": 0,
       "value": "or"
+    }
+  ],
+  "e958534988": [
+    {
+      "type": 0,
+      "value": "The converter is not running."
     }
   ],
   "ea0f3fa522": [
@@ -2182,6 +2254,12 @@
     {
       "type": 0,
       "value": "Are you sure you want to leave this workspace?"
+    }
+  ],
+  "fd5f103140": [
+    {
+      "type": 0,
+      "value": "The upload did not finish."
     }
   ],
   "fde5639174": [

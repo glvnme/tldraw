@@ -256,6 +256,19 @@ describe('artifacts and job status', () => {
 		expect(update.parameters).toEqual(expect.arrayContaining(['ready', 1, MODEL_ID, JOB_ID]))
 	})
 
+	it('records a converter failure with its code', async () => {
+		const db = mockDb([[modelRow()], [{ id: MODEL_ID }]])
+		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
+			method: 'POST',
+			headers: await bearer(),
+			body: JSON.stringify({ status: 'failed', errorCode: 'draco_unsupported' }),
+		})
+		expect(response.status).toBe(200)
+		expect(db.queries.at(-1)!.parameters).toEqual(
+			expect.arrayContaining(['failed', 'draco_unsupported', MODEL_ID, JOB_ID])
+		)
+	})
+
 	it('refuses a status update for a model that already finished', async () => {
 		mockDb([[modelRow({ status: 'ready' })]])
 		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
