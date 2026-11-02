@@ -85,6 +85,34 @@ function clerkJsPlugin(): Plugin {
 	}
 }
 
+// Local dev identity (README "Running without Clerk"): swaps Clerk for a fixed signed-in user.
+// Dev server only, so a production build never contains the shim.
+function localDevAuthPlugin(): Plugin {
+	return {
+		name: 'local-dev-auth',
+		config(_, { command }) {
+			if (command !== 'serve' || process.env.VITE_LOCAL_DEV_AUTH !== '1') return
+			return {
+				resolve: {
+					alias: [
+						{
+							find: /^@clerk\/clerk-react$/,
+							replacement: fileURLToPath(
+								new URL('./src/localDevAuth/clerkShim.tsx', import.meta.url)
+							),
+						},
+					],
+				},
+				define: {
+					// main.tsx and TlaRootProviders refuse to start without a key; the shim ignores it.
+					'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify('local-dev'),
+					'process.env.CLERK_JS_VERSION': 'undefined',
+				},
+			}
+		},
+	}
+}
+
 function urlOrLocalFallback(mode: string, url: string | undefined, localFallbackPort: number) {
 	if (url) {
 		return JSON.stringify(url)
@@ -111,6 +139,7 @@ export default defineConfig((env) => ({
 		thumbnailRenderEntryPlugin(),
 		spaFallbackPlugin(),
 		clerkJsPlugin(),
+		localDevAuthPlugin(),
 		thumbnailScreenshotPlugin(),
 		zodLocalePlugin(fileURLToPath(new URL('./scripts/zod-locales-shim.js', import.meta.url))),
 		react(),
