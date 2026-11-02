@@ -123,6 +123,15 @@ export interface Model3dConvertJob {
 	}
 }
 
+/**
+ * GET `<converter>/jobs/:modelId`, the worker's liveness probe: the attempt the converter holds for
+ * the model, or 404 if it holds none.
+ */
+export interface Model3dConverterJobProbe {
+	jobId: string
+	state: 'queued' | 'running'
+}
+
 /** POST `jobStatus`, from the converter. */
 export type Model3dJobStatusRequest =
 	| { status: 'converting'; stage: Model3dConvertStage; progress: number }

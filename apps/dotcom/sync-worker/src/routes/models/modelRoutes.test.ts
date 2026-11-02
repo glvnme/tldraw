@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFakeKysely } from '../../test/fakeKysely'
 import { createFakeR2 } from '../../test/fakeR2'
 import { Environment } from '../../types'
-import { MODEL_JOB_EXPIRY_MS, MODEL_PART_SIZE } from './modelConfig'
+import { MODEL_JOB_EXPIRY_MS, MODEL_JOB_PROBE_AFTER_MS, MODEL_PART_SIZE } from './modelConfig'
 
 vi.mock('../../postgres', () => ({ createPostgresConnectionPool: vi.fn() }))
 vi.mock('../../utils/tla/getAuth', () => ({ getAuth: vi.fn() }))
@@ -327,11 +327,70 @@ describe('user routes', () => {
 		)
 	})
 
-	it('leaves a job that reported recently alone', async () => {
-		const db = mockDb([[{ ...modelRow({ updatedAt: Date.now() - 60_000 }), role: 'member' }]])
+	it('leaves a job that reported recently alone without probing the converter', async () => {
+		const fetchMock = vi.fn()
+		vi.stubGlobal('fetch', fetchMock)
+		const db = mockDb([[{ ...modelRow({ updatedAt: Date.now() - 30_000 }), role: 'member' }]])
 		const response = await call(`/app/models/${MODEL_ID}`)
 		expect(await response.json()).toMatchObject({ status: 'converting' })
 		expect(db.queries).toHaveLength(1)
+		expect(fetchMock).not.toHaveBeenCalled()
+	})
+
+	describe('converter liveness probe', () => {
+		const QUIET_MS = MODEL_JOB_PROBE_AFTER_MS + 1_000
+
+		async function pollQuietRow(jobId: string, probe: () => Promise<Response>) {
+			const fetchMock = vi.fn<(url: string) => Promise<Response>>(probe)
+			vi.stubGlobal('fetch', fetchMock)
+			const quiet = modelRow({ jobId, updatedAt: Date.now() - QUIET_MS })
+			const failed = (errorCode: string) => ({ ...quiet, status: 'failed', stage: null, errorCode })
+			const db = mockDb([[{ ...quiet, role: 'member' }], [failed('from the update')]])
+			const response = await call(`/app/models/${MODEL_ID}`)
+			return { response, db, fetchMock, quiet }
+		}
+
+		it.each([
+			[
+				'the converter is unreachable',
+				() => Promise.reject(new TypeError('fetch failed')),
+				'converter_unavailable',
+			],
+			[
+				'the converter holds no job for the model',
+				async () => Response.json({ error: 'not_found' }, { status: 404 }),
+				'conversion_failed',
+			],
+			[
+				'the converter holds another attempt',
+				async () => Response.json({ jobId: 'job-other', state: 'running' }),
+				'conversion_failed',
+			],
+		])('fails a quiet row when %s', async (_, probe, errorCode) => {
+			const { response, db, fetchMock, quiet } = await pollQuietRow(`job-${errorCode}`, probe)
+			expect(response.status).toBe(200)
+			expect(fetchMock.mock.calls[0][0]).toBe(`http://127.0.0.1:8790/jobs/${MODEL_ID}`)
+			const update = db.queries.at(-1)!
+			expect(update.sql).toMatch(/^update "model" set "status" = \$1/)
+			expect(update.sql).toContain('"jobId" = $')
+			expect(update.sql).toContain('"updatedAt" = $')
+			expect(update.parameters).toEqual(
+				expect.arrayContaining(['failed', errorCode, MODEL_ID, quiet.jobId, quiet.updatedAt])
+			)
+		})
+
+		it('leaves a job the converter confirms, and does not probe it again for a while', async () => {
+			const confirm = async () => Response.json({ jobId: 'job-live', state: 'running' })
+			const first = await pollQuietRow('job-live', confirm)
+			expect(await first.response.json()).toMatchObject({ status: 'converting' })
+			expect(first.fetchMock).toHaveBeenCalledTimes(1)
+			expect(first.db.queries).toHaveLength(1)
+
+			const second = await pollQuietRow('job-live', confirm)
+			expect(await second.response.json()).toMatchObject({ status: 'converting' })
+			expect(second.fetchMock).not.toHaveBeenCalled()
+			expect(second.db.queries).toHaveLength(1)
+		})
 	})
 
 	it('refuses a source over the size cap at create', async () => {

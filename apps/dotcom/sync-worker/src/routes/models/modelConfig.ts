@@ -14,9 +14,15 @@ export const MODEL_JOB_LIMITS: Model3dConvertJob['limits'] = {
 	timeoutMs: 30 * 60_000,
 }
 
-// A job that has not reported for this long is abandoned: the converter kills a job at its timeout
-// and reports on start, so a live one always reports sooner. A job queued behind more than this
-// much work is expired too; its Retry replaces the queued entry rather than adding one.
+// A row that has not changed for this long is checked with the converter's liveness probe, and
+// then no more than once per this long while the converter confirms it holds the job.
+export const MODEL_JOB_PROBE_AFTER_MS = 60_000
+export const MODEL_JOB_PROBE_TIMEOUT_MS = 2_000
+
+// The backstop behind the probe. A job that has not reported for this long is abandoned: the
+// converter kills a job at its timeout and reports on start, so a live one always reports sooner. A
+// job queued behind more than this much work is expired too; its Retry replaces the queued entry
+// rather than adding one.
 export const MODEL_JOB_EXPIRY_MS = MODEL_JOB_LIMITS.timeoutMs + 5 * 60_000
 
 // The converter runs one job at a time, so a token must outlive the queue ahead of it.
@@ -27,6 +33,11 @@ const DEFAULT_WORKER_ORIGIN = 'http://127.0.0.1:8787'
 
 export function getConverterUrl(env: Environment) {
 	return env.MODEL_CONVERTER_URL || DEFAULT_CONVERTER_URL
+}
+
+/** The converter's liveness probe for a model, next to its jobs endpoint. */
+export function getConverterJobProbeUrl(env: Environment, modelId: string) {
+	return `${getConverterUrl(env).replace(/\/+$/, '')}/${encodeURIComponent(modelId)}`
 }
 
 export function getModelWorkerOrigin(env: Environment) {

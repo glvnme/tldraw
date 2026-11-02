@@ -1,4 +1,4 @@
-import type { Model3dConvertJob } from '@tldraw/dotcom-shared'
+import type { Model3dConvertJob, Model3dConverterJobProbe } from '@tldraw/dotcom-shared'
 import { log } from './errors'
 
 export type RunJob = (job: Model3dConvertJob, signal: AbortSignal) => Promise<void>
@@ -19,6 +19,17 @@ export class JobQueue {
 
 	status() {
 		return { running: this.running?.job.modelId ?? null, queued: this.queue.length }
+	}
+
+	/**
+	 * The attempt held for a model, read from its token without verifying it. A queued attempt wins
+	 * over a running one for the same model: that one was stopped for it and is on its way out.
+	 */
+	probe(modelId: string): Model3dConverterJobProbe | null {
+		const queued = this.queue.find((job) => job.modelId === modelId)
+		const job = queued ?? (this.running?.job.modelId === modelId ? this.running.job : null)
+		const jobId = job && /^\d+\.([A-Za-z0-9_-]+)\./.exec(job.token)?.[1]
+		return jobId ? { jobId, state: queued ? 'queued' : 'running' } : null
 	}
 
 	admit(job: Model3dConvertJob): Admission {

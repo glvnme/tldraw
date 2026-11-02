@@ -6,6 +6,7 @@ import {
 	MODEL3D_ROUTES,
 	Model3dArtifactName,
 	Model3dConvertJob,
+	Model3dConverterJobProbe,
 	Model3dErrorCode,
 	Model3dErrorResponse,
 	Model3dJobStatusResponse,
@@ -29,10 +30,13 @@ import {
 	MODEL_ARTIFACT_NAMES,
 	MODEL_JOB_EXPIRY_MS,
 	MODEL_JOB_LIMITS,
+	MODEL_JOB_PROBE_AFTER_MS,
+	MODEL_JOB_PROBE_TIMEOUT_MS,
 	MODEL_JOB_TOKEN_TTL_MS,
 	MODEL_MAX_MANIFEST_BYTES,
 	MODEL_MAX_SOURCE_BYTES,
 	MODEL_PART_SIZE,
+	getConverterJobProbeUrl,
 	getConverterUrl,
 	getModelWorkerOrigin,
 	modelKeys,
@@ -311,19 +315,66 @@ async function completeModelUpload(
 	return Response.json(response)
 }
 
+// Jobs the converter confirmed, by job id, with when. Per isolate: a fresh isolate probes again.
+const confirmedJobs = new Map<string, number>()
+
 /**
- * A converter restart forgets its queue, leaving the row queued or converting for good. Expired
- * here, as the client polls, so its Retry appears; the attempt check keeps the old job from writing
- * over the retry should it turn out to be alive after all.
+ * Asks the converter whether it still holds the row's attempt. A miss is the error to fail the row
+ * with; null means the job is alive, or was confirmed less than a probe interval ago.
  */
-async function expireAbandonedJob(db: Kysely<DB>, model: TlaModel): Promise<TlaModel> {
-	if (!CONVERTING.includes(model.status) || Date.now() - model.updatedAt <= MODEL_JOB_EXPIRY_MS) {
-		return model
+async function probeConverterJob(
+	env: Environment,
+	model: TlaModel
+): Promise<Model3dErrorCode | null> {
+	const now = Date.now()
+	const jobId = model.jobId
+	if (!jobId) return 'conversion_failed'
+	for (const [id, at] of confirmedJobs) {
+		if (now - at >= MODEL_JOB_PROBE_AFTER_MS) confirmedJobs.delete(id)
 	}
+	if (confirmedJobs.has(jobId)) return null
+	let response: Response
+	try {
+		response = await fetch(getConverterJobProbeUrl(env, model.id), {
+			signal: AbortSignal.timeout(MODEL_JOB_PROBE_TIMEOUT_MS),
+		})
+	} catch {
+		return 'converter_unavailable'
+	}
+	if (response.status === 404) return 'conversion_failed'
+	if (!response.ok) return 'converter_unavailable'
+	const probe = (await response.json().catch(() => null)) as Model3dConverterJobProbe | null
+	if (probe?.jobId !== jobId) return 'conversion_failed'
+	confirmedJobs.set(jobId, now)
+	return null
+}
+
+/**
+ * A converter crash or restart forgets its queue, leaving the row queued or converting for good.
+ * Failed here, as the client polls, so its Retry appears: once the row has been quiet for a probe
+ * interval and the converter does not confirm the job, or at the expiry whatever the converter
+ * says. The `updatedAt` match keeps this from overwriting a report that landed meanwhile, and the
+ * attempt check keeps the old job from writing over the retry should it turn out to be alive.
+ */
+async function expireAbandonedJob(
+	env: Environment,
+	db: Kysely<DB>,
+	model: TlaModel
+): Promise<TlaModel> {
+	if (!CONVERTING.includes(model.status)) return model
+	const quietMs = Date.now() - model.updatedAt
+	const errorCode =
+		quietMs > MODEL_JOB_EXPIRY_MS
+			? 'conversion_timeout'
+			: quietMs > MODEL_JOB_PROBE_AFTER_MS
+				? await probeConverterJob(env, model)
+				: null
+	if (!errorCode) return model
 	const expired = await db
 		.updateTable('model')
-		.set({ status: 'failed', stage: null, errorCode: 'conversion_timeout', updatedAt: Date.now() })
+		.set({ status: 'failed', stage: null, errorCode, updatedAt: Date.now() })
 		.where('id', '=', model.id)
+		.where('jobId', '=', model.jobId)
 		.where('status', 'in', CONVERTING)
 		.where('updatedAt', '=', model.updatedAt)
 		.returningAll()
@@ -335,7 +386,7 @@ async function getModelStatus(request: IRequest, env: Environment): Promise<Resp
 	const modelId = modelIdParam(request)
 	const userId = await requireUserId(request, env)
 	const model = await withDb(env, async (db) =>
-		expireAbandonedJob(db, await loadModelForMember(db, modelId, userId))
+		expireAbandonedJob(env, db, await loadModelForMember(db, modelId, userId))
 	)
 	const response: GetModelStatusResponse = {
 		modelId: model.id,
