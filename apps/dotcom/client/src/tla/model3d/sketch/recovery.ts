@@ -52,6 +52,7 @@ export function recoverModel3dSketch(editor: Editor) {
 	const value = key && getFromSessionStorage(key)
 	if (!key || !value) return
 	deleteFromSessionStorage(key)
+	if (openedWithDeepLink()) return
 	try {
 		const restore = JSON.parse(value) as Model3dSketchRestore
 		if (!editor.getPage(restore.pageId)) return
@@ -59,6 +60,19 @@ export function recoverModel3dSketch(editor: Editor) {
 	} catch (e) {
 		console.error('Could not restore the board camera after sketching', e)
 	}
+}
+
+/**
+ * Whether this page was opened from a link to a place on the board, which then decides the camera.
+ * Read from the navigation entry because the editor rewrites `?d=` as the camera moves, so after a
+ * reload the URL holds the sketch camera, and the comment link handler strips `?comment=`.
+ */
+function openedWithDeepLink() {
+	const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+	if (entry?.type !== 'navigate') return false
+	const url = new URL(entry.name)
+	if (url.pathname !== window.location.pathname) return false
+	return url.searchParams.has('d') || url.searchParams.has('comment')
 }
 
 /** Sets the camera on the page sketching started from, which may not be the current page. */
