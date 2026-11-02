@@ -8,11 +8,10 @@ import {
 	AssetRecordType,
 	Atom,
 	Editor,
-	TLCameraOptions,
+	TLAssetId,
 	TLImageAsset,
 	TLRecord,
 	TLShapeId,
-	VecModel,
 	WeakCache,
 	atom,
 	createShapeId,
@@ -30,12 +29,17 @@ import {
 } from '../revisions/state'
 import { computeStrokeHash } from '../revisions/strokeHash'
 import { getModel3dViewerHandle, getModel3dViewerState } from '../viewerState'
-import { getModel3dHiddenShapeIds } from '../visibility'
+import {
+	Model3dSketchRestore,
+	clearModel3dSketchRecovery,
+	restoreModel3dBoard,
+	saveModel3dSketchRecovery,
+} from './recovery'
 
 export interface Model3dSketchSession {
 	revisionId: TLShapeId
-	savedCamera: VecModel
-	savedCameraOptions: TLCameraOptions
+	/** The board as it was before sketching, on the page sketching started from. */
+	restore: Model3dSketchRestore
 }
 
 const sessions = new WeakCache<Editor, Atom<Model3dSketchSession | null>>()
@@ -57,6 +61,8 @@ export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId
 	if (getModel3dSketchSession(editor).get()) return
 
 	entering.add(editor)
+	// Read in the same task as the capture renders, so the pose matches the pixels.
+	const pose = handle.getCamera()
 	let frame: Awaited<ReturnType<ViewerHandle['captureFrame']>>
 	try {
 		frame = await handle.captureFrame()
@@ -72,7 +78,6 @@ export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId
 		h: Math.round(frame.height / frame.dpr),
 		dpr: frame.dpr,
 	}
-	const pose = handle.getCamera()
 	const name = nextRevisionName(
 		getModel3dRevisions(editor, model.props.modelId).map((r) => r.props.name)
 	)
@@ -109,7 +114,6 @@ export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId
 		viewport,
 		obstacles
 	)
-	const hiddenIds = new Set(editor.getCurrentPageShapeIds())
 	const revisionId = createShapeId()
 
 	editor.markHistoryStoppingPoint('model3d sketch')
@@ -132,13 +136,16 @@ export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId
 		},
 	})
 
+	const { x, y, z } = editor.getCamera()
+	const restore: Model3dSketchRestore = {
+		pageId,
+		camera: { x, y, z },
+		cameraOptions: editor.getCameraOptions(),
+		toolId: editor.getCurrentToolId(),
+	}
+	saveModel3dSketchRecovery(editor, restore)
 	transact(() => {
-		getModel3dSketchSession(editor).set({
-			revisionId,
-			savedCamera: { ...editor.getCamera() },
-			savedCameraOptions: editor.getCameraOptions(),
-		})
-		getModel3dHiddenShapeIds(editor).set(hiddenIds)
+		getModel3dSketchSession(editor).set({ revisionId, restore })
 		fitSketchCamera(editor)
 		editor.setCameraOptions({ isLocked: true })
 		handle.pause()
@@ -151,10 +158,47 @@ export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId
 	void uploadSnapshot(editor, asset, file)
 }
 
+interface SnapshotUpload {
+	status: 'uploading' | 'failed'
+	file: File
+}
+
+const snapshotUploads = new WeakCache<Editor, Atom<ReadonlyMap<TLAssetId, SnapshotUpload>>>()
+
+/** Snapshot uploads started in this tab that have not saved yet, by asset. */
+export function getModel3dSnapshotUploads(editor: Editor) {
+	return snapshotUploads.get(editor, () =>
+		atom<ReadonlyMap<TLAssetId, SnapshotUpload>>('model3d snapshot uploads', new Map())
+	)
+}
+
+function setSnapshotUpload(editor: Editor, assetId: TLAssetId, upload: SnapshotUpload | null) {
+	getModel3dSnapshotUploads(editor).update((prev) => {
+		const next = new Map(prev)
+		if (upload) next.set(assetId, upload)
+		else next.delete(assetId)
+		return next
+	})
+}
+
+/** Publishing needs a saved snapshot: other clients cannot see a src-less asset. */
+export function isModel3dSnapshotSaved(editor: Editor, assetId: TLAssetId | null) {
+	return !!assetId && !!editor.getAsset(assetId)?.props.src
+}
+
+export function retryModel3dSnapshotUpload(editor: Editor, assetId: TLAssetId) {
+	const upload = getModel3dSnapshotUploads(editor).get().get(assetId)
+	const asset = editor.getAsset(assetId)
+	if (upload?.status !== 'failed' || asset?.type !== 'image') return
+	void uploadSnapshot(editor, asset, upload.file)
+}
+
 async function uploadSnapshot(editor: Editor, asset: TLImageAsset, file: File) {
+	setSnapshotUpload(editor, asset.id, { status: 'uploading', file })
 	try {
 		const { src, meta } = await editor.uploadAsset(asset, file)
 		const current = editor.getAsset(asset.id)
+		setSnapshotUpload(editor, asset.id, null)
 		if (!current) return
 		editor.run(
 			() =>
@@ -165,6 +209,7 @@ async function uploadSnapshot(editor: Editor, asset: TLImageAsset, file: File) {
 		)
 	} catch (e) {
 		console.error('Could not upload the revision snapshot', e)
+		setSnapshotUpload(editor, asset.id, { status: 'failed', file })
 	}
 }
 
@@ -191,11 +236,9 @@ export function exitModel3dSketch(editor: Editor) {
 	if (!session) return
 	transact(() => {
 		getModel3dSketchSession(editor).set(null)
-		editor.setCameraOptions(session.savedCameraOptions)
-		editor.setCamera(session.savedCamera, { immediate: true, force: true })
-		getModel3dHiddenShapeIds(editor).set(new Set())
+		restoreModel3dBoard(editor, session.restore)
 	})
-	editor.setCurrentTool('select')
+	clearModel3dSketchRecovery(editor)
 	editor.selectNone()
 
 	const viewer = getModel3dViewerState(editor).get()
@@ -217,21 +260,29 @@ export function discardModel3dSketch(editor: Editor) {
 	exitModel3dSketch(editor)
 }
 
-/** Freezes the revision: records which strokes it shows and locks them, then returns to 3D. */
+/** Publishes the sketch, then returns to 3D. */
 export async function publishModel3dSketch(editor: Editor) {
 	const session = getModel3dSketchSession(editor).get()
 	if (!session) return
+	const published = await publishModel3dRevision(editor, session.revisionId)
+	if (published && getModel3dSketchSession(editor).get() === session) exitModel3dSketch(editor)
+}
+
+/**
+ * Freezes the revision: records which strokes it shows and locks them. Also republishes a
+ * revision whose strokes changed after publishing.
+ */
+export async function publishModel3dRevision(editor: Editor, revisionId: TLShapeId) {
 	let records: TLRecord[]
 	let strokeHash: string
 	// The hash is async; retry if the strokes changed underneath it.
 	do {
-		records = getRevisionContentRecords(editor, session.revisionId)
+		records = getRevisionContentRecords(editor, revisionId)
 		strokeHash = await computeStrokeHash(records)
-		if (getModel3dSketchSession(editor).get() !== session) return
-	} while (!isSameRecords(records, getRevisionContentRecords(editor, session.revisionId)))
+	} while (!isSameRecords(records, getRevisionContentRecords(editor, revisionId)))
 
-	const revision = getModel3dRevision(editor, session.revisionId)
-	if (!revision) return exitModel3dSketch(editor)
+	const revision = getModel3dRevision(editor, revisionId)
+	if (!revision || !isModel3dSnapshotSaved(editor, revision.props.assetId)) return false
 	editor.markHistoryStoppingPoint('model3d publish')
 	editor.run(() => {
 		editor.updateShape<TLModel3dRevisionShape>({
@@ -243,7 +294,7 @@ export async function publishModel3dSketch(editor: Editor) {
 			records.filter(isShape).map((s) => ({ id: s.id, type: s.type, isLocked: true }))
 		)
 	})
-	exitModel3dSketch(editor)
+	return true
 }
 
 function isSameRecords(a: readonly TLRecord[], b: readonly TLRecord[]) {
