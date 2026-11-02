@@ -4,7 +4,7 @@ import {
 	model3dShapeMigrations,
 	model3dShapeProps,
 } from '@tldraw/dotcom-shared'
-import { PointerEventHandler, ReactNode, useCallback } from 'react'
+import { PointerEventHandler, ReactNode, useCallback, useState } from 'react'
 import {
 	BaseBoxShapeUtil,
 	FileHelpers,
@@ -115,8 +115,14 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		width: shape.props.w,
 	})
 
+	const [retryError, setRetryError] = useState<string | null>(null)
 	const retryConversion = useCallback(async () => {
-		await requeueModel3d(getToken, modelId).catch((e) => console.error(e))
+		setRetryError(null)
+		try {
+			await requeueModel3d(getToken, modelId)
+		} catch (e) {
+			setRetryError(e instanceof Error ? e.message : String(e))
+		}
 		model3dStatusPoller.refresh(modelId)
 	}, [getToken, modelId])
 
@@ -169,6 +175,9 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 				<span className={styles.error}>
 					{msg(messages.conversionFailed, { error: status.errorCode ?? '' })}
 				</span>
+				{retryError && (
+					<span className={styles.error}>{msg(messages.retryFailed, { error: retryError })}</span>
+				)}
 				{!isReadonly && <CardButton onClick={retryConversion}>{msg(messages.retry)}</CardButton>}
 			</Card>
 		)

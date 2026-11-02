@@ -705,6 +705,9 @@
   "dbf9b24193": {
     "translation": "Leave workspace"
   },
+  "defc490d7b": {
+    "translation": "Retry failed: {error}"
+  },
   "df7ef33b8d": {
     "translation": "Waiting to convert"
   },
