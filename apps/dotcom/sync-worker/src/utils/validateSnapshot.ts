@@ -1,5 +1,6 @@
+import { createFileSyncSchema } from '@tldraw/dotcom-shared'
 import { SerializedSchema, SerializedStore } from '@tldraw/store'
-import { TLRecord, createTLSchema } from '@tldraw/tlschema'
+import { TLRecord, commentSchemaRecords } from '@tldraw/tlschema'
 import { Result, objectMapEntries } from '@tldraw/utils'
 
 interface SnapshotRequestBody {
@@ -7,7 +8,7 @@ interface SnapshotRequestBody {
 	snapshot: SerializedStore<TLRecord>
 }
 
-const schema = createTLSchema()
+const schema = createFileSyncSchema()
 export function validateSnapshot(
 	body: SnapshotRequestBody
 ): Result<SerializedStore<TLRecord>, string> {
@@ -37,6 +38,13 @@ export function validateSnapshot(
 			// Remove all records whose record type scopes are not 'document'.
 			// This is legacy cleanup code.
 			if (recordType.scope !== 'document') {
+				delete migrationResult.value[id]
+				continue
+			}
+
+			// Comments are object-lane records the room stamps and persists to Postgres; an imported
+			// snapshot must not seed them.
+			if (record.typeName in commentSchemaRecords) {
 				delete migrationResult.value[id]
 				continue
 			}

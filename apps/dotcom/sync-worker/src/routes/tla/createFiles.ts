@@ -1,12 +1,13 @@
-import { CreateFilesRequestBody } from '@tldraw/dotcom-shared'
+import { CreateFilesRequestBody, createFileSyncSchema } from '@tldraw/dotcom-shared'
 import { RoomSnapshot } from '@tldraw/sync-core'
-import { createTLSchema } from '@tldraw/tlschema'
 import { uniqueId } from '@tldraw/utils'
 import { IRequest } from 'itty-router'
 import { getR2KeyForRoom } from '../../r2'
 import { Environment } from '../../types'
 import { getUserIdFromRequest } from '../../utils/tla/permissions'
 import { validateSnapshot } from '../../utils/validateSnapshot'
+
+const serializedSchema = createFileSyncSchema().serialize()
 
 // Create new files based on snapshots. This is used when dropping .tldr files onto the app.
 export async function createFiles(request: IRequest, env: Environment): Promise<Response> {
@@ -30,7 +31,7 @@ export async function createFiles(request: IRequest, env: Environment): Promise<
 
 		// Create the new snapshot
 		const snapshot: RoomSnapshot = {
-			schema: createTLSchema().serialize(),
+			schema: serializedSchema,
 			clock: 0,
 			documents: Object.values(snapshotResult.value).map((r) => ({
 				state: r,

@@ -14,6 +14,7 @@ import {
 	throttle,
 	TLComponents,
 	Tldraw,
+	TLShape,
 	TldrawUiMenuItem,
 	TLSessionStateSnapshot,
 	tltime,
@@ -38,7 +39,7 @@ import {
 import { trackEvent, useHandleUiEvents } from '../../../utils/analytics'
 import { assetUrls } from '../../../utils/assetUrls'
 import { createAssetFromUrl } from '../../../utils/createAssetFromUrl'
-import { embedShapeUtils } from '../../../utils/embedShapeUtil'
+import { dotcomShapeUtils } from '../../../utils/dotcomShapeUtils'
 import { reportFileLoad } from '../../../utils/fileLoad'
 import { markFirstLoad, reportFirstLoad } from '../../../utils/firstLoad'
 import { globalEditor } from '../../../utils/globalEditor'
@@ -50,6 +51,9 @@ import { ReadyWrapper, useSetIsReady } from '../../hooks/useIsReady'
 import { useNewRoomCreationTracking } from '../../hooks/useNewRoomCreationTracking'
 import { useShareLinkOpenTracking } from '../../hooks/useShareLinkOpenTracking'
 import { useTldrawCurrentUser } from '../../hooks/useUser'
+import { Model3dDebugMenuItems } from '../../model3d/debug'
+import { Model3dOverlayMount } from '../../model3d/overlay'
+import { getModel3dShapeVisibility } from '../../model3d/visibility'
 import { maybeSlurp } from '../../utils/slurping'
 import { TlaAnonDotDevLink } from '../TlaAnonDotDevLink/TlaAnonDotDevLink'
 import { CommentsOnCanvas, SignInToComment, useAnonCommentToolOverrides } from './CommentsOnCanvas'
@@ -150,7 +154,8 @@ function TlaEditorInner({ fileSlug, deepLinks, isEmbed = false }: TlaEditorProps
 	// There's probably a better way of doing this but I couldn't think of one.
 	const hideAllShapes = useAtom('hideAllShapes', false)
 	const getShapeVisibility = useCallback(
-		() => (hideAllShapes.get() ? 'hidden' : 'inherit'),
+		(shape: TLShape, editor: Editor) =>
+			hideAllShapes.get() ? 'hidden' : (getModel3dShapeVisibility(shape, editor) ?? 'inherit'),
 		[hideAllShapes]
 	)
 	const remountImageShapes = useCallback(() => {
@@ -340,9 +345,12 @@ function TlaEditorInner({ fileSlug, deepLinks, isEmbed = false }: TlaEditorProps
 		return {
 			...components,
 			DebugMenu: () => <CustomDebugMenu />,
-			InFrontOfTheCanvas: commentingEnabled
-				? () => <CommentsOnCanvas fileId={fileId} />
-				: undefined,
+			InFrontOfTheCanvas: () => (
+				<>
+					{commentingEnabled && <CommentsOnCanvas fileId={fileId} />}
+					<Model3dOverlayMount />
+				</>
+			),
 		}
 	}, [fileId, commentingEnabled])
 
@@ -361,7 +369,7 @@ function TlaEditorInner({ fileSlug, deepLinks, isEmbed = false }: TlaEditorProps
 				licenseKey={getLicenseKey()}
 				store={store}
 				assetUrls={assetUrls}
-				shapeUtils={embedShapeUtils}
+				shapeUtils={dotcomShapeUtils}
 				tools={commentingEnabled ? tlaCommentTools : undefined}
 				user={app?.tlUser}
 				onMount={handleMount}
@@ -414,6 +422,7 @@ function CustomDebugMenu() {
 					}}
 				/>
 			)}
+			{app && <Model3dDebugMenuItems />}
 			<DefaultDebugMenuContent customDebugFlags={DOTCOM_DEBUG_FLAGS} />
 		</DefaultDebugMenu>
 	)

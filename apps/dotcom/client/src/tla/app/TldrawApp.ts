@@ -47,7 +47,6 @@ import {
 	Atom,
 	computed,
 	createTLCurrentUser,
-	createTLSchema,
 	dataUrlToFile,
 	defaultUserPreferences,
 	defineMessages,
@@ -66,6 +65,7 @@ import {
 import { routes } from '../../routeDefs'
 import { trackEvent } from '../../utils/analytics'
 import { ZERO_SERVER } from '../../utils/config'
+import { fileSyncSchema } from '../../utils/dotcomShapeUtils'
 import { getFirstLoadId, markFirstLoad } from '../../utils/firstLoad'
 import { multiplayerAssetStore } from '../../utils/multiplayerAssetStore'
 import { getScratchPersistenceKey } from '../../utils/scratch-persistence-key'
@@ -1409,7 +1409,7 @@ export class TldrawApp {
 	) {
 		const json = await file.text()
 		const parseFileResult = parseTldrawJsonFile({
-			schema: createTLSchema(),
+			schema: fileSyncSchema,
 			json,
 		})
 

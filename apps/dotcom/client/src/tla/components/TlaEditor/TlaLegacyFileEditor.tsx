@@ -6,7 +6,7 @@ import {
 } from '@tldraw/dotcom-shared'
 import { useSync } from '@tldraw/sync'
 import { useCallback, useMemo } from 'react'
-import { commentSchemaRecords, Editor, TLComponents, Tldraw } from 'tldraw'
+import { Editor, TLComponents, Tldraw } from 'tldraw'
 import { StoreErrorScreen } from '../../../components/StoreErrorScreen'
 import { ThemeUpdater } from '../../../components/ThemeUpdater/ThemeUpdater'
 import { useLegacyUrlParams } from '../../../hooks/useLegacyUrlParams'
@@ -15,7 +15,7 @@ import { trackEvent, useHandleUiEvents } from '../../../utils/analytics'
 import { assetUrls } from '../../../utils/assetUrls'
 import { CLIENT_BUILD_TIMESTAMP, MULTIPLAYER_SERVER } from '../../../utils/config'
 import { createAssetFromUrl } from '../../../utils/createAssetFromUrl'
-import { embedShapeUtils } from '../../../utils/embedShapeUtil'
+import { dotcomShapeUtils, fileSyncSchema } from '../../../utils/dotcomShapeUtils'
 import { globalEditor } from '../../../utils/globalEditor'
 import { multiplayerAssetStore } from '../../../utils/multiplayerAssetStore'
 import { useMaybeApp } from '../../hooks/useAppState'
@@ -79,10 +79,9 @@ function TlaEditorInner({
 		roomId: fileSlug,
 		assets,
 		trackAnalyticsEvent: trackEvent,
-		// Register the comment record types so the schema matches the server's (see
-		// fileSyncSchema in TLFileDurableObject) — without them the server rejects the
-		// session as too old. Legacy rooms don't render a comments UI.
-		records: commentSchemaRecords,
+		// Must match the server's schema (see fileSyncSchema in TLFileDurableObject) or the server
+		// rejects the session as too old. Legacy rooms don't render a comments UI.
+		schema: fileSyncSchema,
 	})
 
 	const fileSystemUiOverrides = useFileEditorOverrides({})
@@ -119,7 +118,7 @@ function TlaEditorInner({
 				licenseKey={getLicenseKey()}
 				store={storeWithStatus}
 				assetUrls={assetUrls}
-				shapeUtils={embedShapeUtils}
+				shapeUtils={dotcomShapeUtils}
 				onMount={handleMount}
 				overrides={[fileSystemUiOverrides]}
 				initialState={isReadonly ? 'hand' : 'select'}
