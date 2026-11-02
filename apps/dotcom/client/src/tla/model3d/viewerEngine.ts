@@ -8,6 +8,7 @@ import {
 	MathUtils,
 	Mesh,
 	Object3D,
+	OrthographicCamera,
 	PerspectiveCamera,
 	Scene,
 	Sphere,
@@ -58,7 +59,9 @@ export async function createModel3dViewerEngine(
 
 	const scene = new Scene()
 	scene.background = new Color(0xeceef1)
-	const camera = new PerspectiveCamera(50, 1, 0.01, 1000)
+	const initialCamera = new PerspectiveCamera(50, 1, 0.01, 1000)
+	let camera: PerspectiveCamera | OrthographicCamera = initialCamera
+	let aspect = 1
 	scene.add(camera)
 	scene.add(new HemisphereLight(0xffffff, 0x8d8d8d, 1.4))
 	// Parented to the camera so the model stays lit from the viewer's side while orbiting.
@@ -66,9 +69,6 @@ export async function createModel3dViewerEngine(
 	sun.position.set(1, 2, 0)
 	sun.target.position.set(0, 0, -1)
 	camera.add(sun, sun.target)
-
-	const controls = new OrbitControls(camera, canvas)
-	controls.enableDamping = false
 
 	let disposed = false
 	let paused = false
@@ -87,33 +87,64 @@ export async function createModel3dViewerEngine(
 		frame = requestAnimationFrame(renderNow)
 	}
 
-	const getCamera = (): Model3dCamera => ({
-		projection: 'perspective',
-		position: camera.position.toArray(),
-		target: controls.target.toArray(),
-		up: camera.up.toArray(),
-		fov: camera.fov,
-		aspect: camera.aspect,
-	})
+	const getCamera = (): Model3dCamera => {
+		const base = {
+			position: camera.position.toArray(),
+			target: controls.target.toArray(),
+			up: camera.up.toArray(),
+			aspect,
+		}
+		return camera instanceof PerspectiveCamera
+			? { projection: 'perspective', ...base, fov: camera.fov }
+			: {
+					projection: 'orthographic',
+					...base,
+					viewHeight: (camera.top - camera.bottom) / camera.zoom,
+				}
+	}
 	const emitCameraChange = () => {
 		if (listeners.size === 0) return
 		const value = getCamera()
 		for (const listener of listeners) listener(value)
 	}
 
-	controls.addEventListener('start', () => cancelAnimationFrame(animation))
-	controls.addEventListener('change', () => {
-		requestRender()
-		emitCameraChange()
-	})
+	// OrbitControls reads `camera.up` once, in its constructor, so a new up or camera needs new controls.
+	const createControls = () => {
+		const next = new OrbitControls(camera, canvas)
+		next.enableDamping = false
+		next.addEventListener('start', () => cancelAnimationFrame(animation))
+		next.addEventListener('change', () => {
+			requestRender()
+			emitCameraChange()
+		})
+		return next
+	}
+	let controls = createControls()
+	const rebuildControls = () => {
+		const { maxDistance, enabled } = controls
+		controls.dispose()
+		controls = createControls()
+		controls.maxDistance = maxDistance
+		controls.enabled = enabled
+	}
+
+	const updateProjection = () => {
+		if (camera instanceof PerspectiveCamera) {
+			camera.aspect = aspect
+		} else {
+			camera.left = camera.bottom * aspect
+			camera.right = camera.top * aspect
+		}
+		camera.updateProjectionMatrix()
+	}
 
 	const resize = () => {
 		const { clientWidth: w, clientHeight: h } = container
 		// Zero while sketch mode hides the overlay.
 		if (!w || !h) return
 		renderer.setSize(w, h, false)
-		camera.aspect = w / h
-		camera.updateProjectionMatrix()
+		aspect = w / h
+		updateProjection()
 		if (!paused) renderNow()
 	}
 	const resizeObserver = new ResizeObserver(resize)
@@ -169,19 +200,38 @@ export async function createModel3dViewerEngine(
 	camera.far = radius * 1000
 	controls.maxDistance = radius * 100
 
+	const setProjection = (projection: Model3dCamera['projection']) => {
+		const isPerspective = camera instanceof PerspectiveCamera
+		if (isPerspective === (projection === 'perspective')) return false
+		const next =
+			projection === 'perspective'
+				? new PerspectiveCamera(50, aspect, camera.near, camera.far)
+				: new OrthographicCamera(-1, 1, 1, -1, camera.near, camera.far)
+		camera.remove(sun, sun.target)
+		scene.remove(camera)
+		camera = next
+		scene.add(camera)
+		camera.add(sun, sun.target)
+		return true
+	}
+
 	const applyCamera = (value: Model3dCamera) => {
-		camera.up.fromArray(value.up)
-		controls.target.fromArray(value.target)
+		const swapped = setProjection(value.projection)
+		const up = new Vector3().fromArray(value.up).normalize()
+		const upChanged = !up.equals(camera.up)
+		camera.up.copy(up)
 		camera.position.fromArray(value.position)
 		if (value.projection === 'perspective') {
-			camera.fov = value.fov
+			;(camera as PerspectiveCamera).fov = value.fov
 		} else {
-			// Frame the same view height with the perspective camera.
-			const distance = value.viewHeight / 2 / Math.tan(MathUtils.degToRad(camera.fov / 2))
-			const dir = camera.position.clone().sub(controls.target).normalize()
-			camera.position.copy(controls.target).addScaledVector(dir, distance)
+			const ortho = camera as OrthographicCamera
+			ortho.top = value.viewHeight / 2
+			ortho.bottom = -value.viewHeight / 2
+			ortho.zoom = 1
 		}
-		camera.updateProjectionMatrix()
+		updateProjection()
+		if (swapped || upChanged) rebuildControls()
+		controls.target.fromArray(value.target)
 		controls.update()
 	}
 
@@ -189,7 +239,7 @@ export async function createModel3dViewerEngine(
 	if (opts.initialCamera) {
 		applyCamera(opts.initialCamera)
 	} else {
-		fitCamera(camera, controls.target, sphere.center, radius)
+		fitCamera(initialCamera, controls.target, sphere.center, radius)
 		controls.update()
 	}
 	renderNow()
@@ -262,18 +312,23 @@ function fitCamera(camera: PerspectiveCamera, target: Vector3, center: Vector3, 
 	camera.updateProjectionMatrix()
 }
 
+/** Animates in `b`'s projection; a projection change snaps on the first frame. */
 function lerpCamera(a: Model3dCamera, b: Model3dCamera, t: number): Model3dCamera {
+	const lerp = (x: number, y: number) => x + (y - x) * t
 	const lerp3 = (x: number[], y: number[]) =>
-		[0, 1, 2].map((i) => x[i] + (y[i] - x[i]) * t) as [number, number, number]
-	const fov = (c: Model3dCamera) => (c.projection === 'perspective' ? c.fov : 50)
-	return {
-		projection: 'perspective',
+		[0, 1, 2].map((i) => lerp(x[i], y[i])) as [number, number, number]
+	const base = {
 		position: lerp3(a.position, b.position),
 		target: lerp3(a.target, b.target),
 		up: lerp3(a.up, b.up),
-		fov: fov(a) + (fov(b) - fov(a)) * t,
 		aspect: b.aspect,
 	}
+	if (b.projection === 'orthographic') {
+		const from = a.projection === 'orthographic' ? a.viewHeight : b.viewHeight
+		return { projection: 'orthographic', ...base, viewHeight: lerp(from, b.viewHeight) }
+	}
+	const from = a.projection === 'perspective' ? a.fov : b.fov
+	return { projection: 'perspective', ...base, fov: lerp(from, b.fov) }
 }
 
 async function fetchModel(
