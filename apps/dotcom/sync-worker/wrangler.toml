@@ -147,6 +147,8 @@ MCP_SCREENSHOT_TOKEN_SECRET = "local-dev-thumbnail-render-secret"
 # to the client dev server, which drives Playwright. Deployed environments leave this unset and use
 # the BROWSER binding.
 LOCAL_SCREENSHOT_SERVICE_URL = "http://localhost:3000/__screenshot"
+# local-only signing secret for 3D model converter job tokens
+MODEL_JOB_SECRET = "local-dev-model-job-secret"
 
 # we don't have a hard-coded name for preview. we instead have to generate it at build time and append it to this file.
 
@@ -484,6 +486,14 @@ bucket_name = "dotcom-mcp-data-preview"
 [[env.production.r2_buckets]]
 binding = "MCP_DATA_BUCKET"
 bucket_name = "dotcom-mcp-data"
+
+#################### 3D models R2 bucket ####################
+# Sources and converted artifacts for the 3D review board (`m/{modelId}/…` keys). Dev only while the
+# feature is a local prototype.
+[[env.dev.r2_buckets]]
+binding = "MODELS"
+bucket_name = "models-preview"
+preview_bucket_name = "models-preview"
 
 #################### Browser Rendering binding ####################
 # Drives the thumbnail render page through a Cloudflare-hosted headless browser (see
