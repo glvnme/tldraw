@@ -11,6 +11,12 @@
       "value": "Accept invitation"
     }
   ],
+  "00dc5a8b2f": [
+    {
+      "type": 0,
+      "value": "Set as default view"
+    }
+  ],
   "029f235f01": [
     {
       "type": 0,
@@ -73,6 +79,16 @@
     {
       "type": 0,
       "value": "You have reached the maximum number of workspaces. You need to delete old workspaces before creating new ones."
+    }
+  ],
+  "065918e2c8": [
+    {
+      "type": 0,
+      "value": "Upload failed: "
+    },
+    {
+      "type": 1,
+      "value": "error"
     }
   ],
   "06b9281e39": [
@@ -203,6 +219,17 @@
       "value": "A workspace must keep at least one owner. Make someone else an owner first."
     }
   ],
+  "20a32311cd": [
+    {
+      "type": 0,
+      "value": "Loading "
+    },
+    {
+      "style": "percent",
+      "type": 2,
+      "value": "percent"
+    }
+  ],
   "21f66c9c00": [
     {
       "type": 0,
@@ -227,6 +254,12 @@
     {
       "type": 0,
       "value": ". Create a free account to continue."
+    }
+  ],
+  "24946dcde3": [
+    {
+      "type": 0,
+      "value": "The model is still uploading."
     }
   ],
   "250ddea65c": [
@@ -279,6 +312,12 @@
     {
       "type": 0,
       "value": "Please try again."
+    }
+  ],
+  "2dbd2cf93c": [
+    {
+      "type": 0,
+      "value": "Open in 3D"
     }
   ],
   "2de510be71": [
@@ -341,6 +380,12 @@
       "value": "Remove member"
     }
   ],
+  "3b54f37983": [
+    {
+      "type": 0,
+      "value": "The 3D view stopped working."
+    }
+  ],
   "3bc7d6ea2f": [
     {
       "type": 0,
@@ -351,6 +396,12 @@
     {
       "type": 0,
       "value": "Unable to publish the changes."
+    }
+  ],
+  "3bea891567": [
+    {
+      "type": 0,
+      "value": "Move this board into a workspace to add models."
     }
   ],
   "3c5e891bff": [
@@ -371,6 +422,12 @@
       "value": "Unsupported Mermaid diagram"
     }
   ],
+  "3f1c5b0049": [
+    {
+      "type": 0,
+      "value": "Uploading"
+    }
+  ],
   "402bf0c47e": [
     {
       "type": 0,
@@ -381,6 +438,12 @@
     {
       "type": 0,
       "value": "Contact the owner to request access."
+    }
+  ],
+  "43c14d3ed9": [
+    {
+      "type": 0,
+      "value": "Converting: parsing"
     }
   ],
   "44db318ee5": [
@@ -585,6 +648,12 @@
       "value": "We failed to upload some of the content you created before you signed in."
     }
   ],
+  "5e473d3987": [
+    {
+      "type": 0,
+      "value": "You don’t have access to this model."
+    }
+  ],
   "5f3c333678": [
     {
       "type": 0,
@@ -650,6 +719,12 @@
       "value": "Older"
     }
   ],
+  "6327b4e59f": [
+    {
+      "type": 0,
+      "value": "Retry"
+    }
+  ],
   "639bae9ac6": [
     {
       "type": 0,
@@ -696,6 +771,12 @@
     {
       "type": 0,
       "value": "Help"
+    }
+  ],
+  "6bc9ee7c6b": [
+    {
+      "type": 0,
+      "value": "3D model"
     }
   ],
   "6dc0836c1b": [
@@ -944,6 +1025,12 @@
       "value": "This invite link has expired"
     }
   ],
+  "8c28a1692b": [
+    {
+      "type": 0,
+      "value": "Model not found"
+    }
+  ],
   "8c2d3d730c": [
     {
       "type": 0,
@@ -1174,6 +1261,12 @@
       "value": "Notifications"
     }
   ],
+  "a38a6b59c7": [
+    {
+      "type": 0,
+      "value": "3D models need a workspace"
+    }
+  ],
   "a3debabee7": [
     {
       "type": 0,
@@ -1232,6 +1325,17 @@
     {
       "type": 0,
       "value": "File limit reached"
+    }
+  ],
+  "acbb8a36e0": [
+    {
+      "style": null,
+      "type": 2,
+      "value": "count"
+    },
+    {
+      "type": 0,
+      "value": " triangles"
     }
   ],
   "af3dc88931": [
@@ -1296,6 +1400,16 @@
     {
       "type": 0,
       "value": "Enable invites"
+    }
+  ],
+  "b5ae502a34": [
+    {
+      "type": 0,
+      "value": "Could not load the model: "
+    },
+    {
+      "type": 1,
+      "value": "error"
     }
   ],
   "b6d4223e60": [
@@ -1384,6 +1498,22 @@
     {
       "type": 1,
       "value": "ownerName"
+    }
+  ],
+  "bcbf28e9a7": [
+    {
+      "type": 0,
+      "value": "Can’t add "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bd9defeeff": [
+    {
+      "type": 0,
+      "value": "Models must be 1 GB or smaller."
     }
   ],
   "c17466812d": [
@@ -1548,10 +1678,22 @@
       "value": " reacted to your comment"
     }
   ],
+  "d176108be4": [
+    {
+      "type": 0,
+      "value": "Converting: fetching"
+    }
+  ],
   "d3d2e61733": [
     {
       "type": 0,
       "value": "Close"
+    }
+  ],
+  "d41751d7fb": [
+    {
+      "type": 0,
+      "value": "Converting: saving"
     }
   ],
   "d46632fe1f": [
@@ -1600,6 +1742,16 @@
       "value": "."
     }
   ],
+  "d670c4f614": [
+    {
+      "type": 0,
+      "value": "Conversion failed: "
+    },
+    {
+      "type": 1,
+      "value": "error"
+    }
+  ],
   "d721757161": [
     {
       "type": 0,
@@ -1634,6 +1786,12 @@
     {
       "type": 0,
       "value": "Leave workspace"
+    }
+  ],
+  "df7ef33b8d": [
+    {
+      "type": 0,
+      "value": "Waiting to convert"
     }
   ],
   "dfdb78a4e4": [
@@ -1702,10 +1860,22 @@
       "value": "or"
     }
   ],
+  "ea0f3fa522": [
+    {
+      "type": 0,
+      "value": "The model could not be converted."
+    }
+  ],
   "ea4788705e": [
     {
       "type": 0,
       "value": "Cancel"
+    }
+  ],
+  "eab2150e8e": [
+    {
+      "type": 0,
+      "value": "Converting: optimizing"
     }
   ],
   "eb1e2b0542": [
@@ -1780,6 +1950,12 @@
     {
       "type": 0,
       "value": "We use cookies to keep you logged in, to sync your files, and to collect analytics to help us improve tldraw."
+    }
+  ],
+  "f09bc49e98": [
+    {
+      "type": 0,
+      "value": "The file is empty."
     }
   ],
   "f0e8bff6f9": [
@@ -1914,6 +2090,12 @@
     {
       "type": 0,
       "value": "Are you sure you want to leave this workspace?"
+    }
+  ],
+  "fde5639174": [
+    {
+      "type": 0,
+      "value": "Preparing the model…"
     }
   ],
   "fed5ec05eb": [

@@ -5,6 +5,9 @@
   "00b177e080": {
     "translation": "Accept invitation"
   },
+  "00dc5a8b2f": {
+    "translation": "Set as default view"
+  },
   "029f235f01": {
     "translation": "We’re working on support for files from <a><strong>{appName}</strong></a>."
   },
@@ -19,6 +22,9 @@
   },
   "05f43078e9": {
     "translation": "You have reached the maximum number of workspaces. You need to delete old workspaces before creating new ones."
+  },
+  "065918e2c8": {
+    "translation": "Upload failed: {error}"
   },
   "06b9281e39": {
     "translation": "Auto"
@@ -80,11 +86,17 @@
   "1ffd709937": {
     "translation": "A workspace must keep at least one owner. Make someone else an owner first."
   },
+  "20a32311cd": {
+    "translation": "Loading {percent, number, percent}"
+  },
   "21f66c9c00": {
     "translation": "Workspace name"
   },
   "23dcace54a": {
     "translation": "You have been invited to join <strong>{workspaceName}</strong>. Create a free account to continue."
+  },
+  "24946dcde3": {
+    "translation": "The model is still uploading."
   },
   "250ddea65c": {
     "translation": "About tldraw"
@@ -106,6 +118,9 @@
   },
   "2d3cdcfdd4": {
     "translation": "Please try again."
+  },
+  "2dbd2cf93c": {
+    "translation": "Open in 3D"
   },
   "2de510be71": {
     "translation": "Regenerating replaces the current invite link with a new one. Anyone using the old link will need the new one to join."
@@ -137,11 +152,17 @@
   "375396d6e5": {
     "translation": "Remove member"
   },
+  "3b54f37983": {
+    "translation": "The 3D view stopped working."
+  },
   "3bc7d6ea2f": {
     "translation": "Continue with email"
   },
   "3bd1b98dbd": {
     "translation": "Unable to publish the changes."
+  },
+  "3bea891567": {
+    "translation": "Move this board into a workspace to add models."
   },
   "3c5e891bff": {
     "translation": "Pinned"
@@ -152,11 +173,17 @@
   "3e2ae04ff0": {
     "translation": "Unsupported Mermaid diagram"
   },
+  "3f1c5b0049": {
+    "translation": "Uploading"
+  },
   "402bf0c47e": {
     "translation": "Color theme"
   },
   "42e53c47c1": {
     "translation": "Contact the owner to request access."
+  },
+  "43c14d3ed9": {
+    "translation": "Converting: parsing"
   },
   "44db318ee5": {
     "translation": "Get help on Discord"
@@ -242,6 +269,9 @@
   "5d26ae7550": {
     "translation": "We failed to upload some of the content you created before you signed in."
   },
+  "5e473d3987": {
+    "translation": "You don’t have access to this model."
+  },
   "5f3c333678": {
     "translation": "Feedback submitted"
   },
@@ -262,6 +292,9 @@
   },
   "625fd29749": {
     "translation": "Older"
+  },
+  "6327b4e59f": {
+    "translation": "Retry"
   },
   "639bae9ac6": {
     "translation": "you"
@@ -286,6 +319,9 @@
   },
   "6a26f54883": {
     "translation": "Help"
+  },
+  "6bc9ee7c6b": {
+    "translation": "3D model"
   },
   "6dc0836c1b": {
     "translation": "You do not have the necessary permissions to perform this action."
@@ -389,6 +425,9 @@
   "88bf6ab42c": {
     "translation": "This invite link has expired"
   },
+  "8c28a1692b": {
+    "translation": "Model not found"
+  },
   "8c2d3d730c": {
     "translation": "Check your email for a verification code."
   },
@@ -470,6 +509,9 @@
   "a274f4d467": {
     "translation": "Notifications"
   },
+  "a38a6b59c7": {
+    "translation": "3D models need a workspace"
+  },
   "a3debabee7": {
     "translation": "Cookie policy"
   },
@@ -500,6 +542,9 @@
   "ab0df9ba36": {
     "translation": "File limit reached"
   },
+  "acbb8a36e0": {
+    "translation": "{count, number} triangles"
+  },
   "af3dc88931": {
     "notes": "This is used to show the last time the file was published. An example is 'Last published 5 minutes ago'.",
     "translation": "Last published <date></date>"
@@ -525,6 +570,9 @@
   "b48becc771": {
     "translation": "Enable invites"
   },
+  "b5ae502a34": {
+    "translation": "Could not load the model: {error}"
+  },
   "b6d4223e60": {
     "translation": "Sign in"
   },
@@ -548,6 +596,12 @@
   },
   "bc88b0e89e": {
     "translation": "Shared by {ownerName}"
+  },
+  "bcbf28e9a7": {
+    "translation": "Can’t add {name}"
+  },
+  "bd9defeeff": {
+    "translation": "Models must be 1 GB or smaller."
   },
   "c17466812d": {
     "translation": "Manage workspace"
@@ -591,8 +645,14 @@
   "d0e3556476": {
     "translation": "<name>{author}</name> and {count, plural, one {# other} other {# others}} reacted to your comment"
   },
+  "d176108be4": {
+    "translation": "Converting: fetching"
+  },
   "d3d2e61733": {
     "translation": "Close"
+  },
+  "d41751d7fb": {
+    "translation": "Converting: saving"
   },
   "d46632fe1f": {
     "translation": "Too many requests. Please slow down."
@@ -602,6 +662,9 @@
   },
   "d638a3344b": {
     "translation": "Before you start, please accept our <tos>terms of use</tos> and <privacy>privacy policy</privacy>."
+  },
+  "d670c4f614": {
+    "translation": "Conversion failed: {error}"
   },
   "d721757161": {
     "translation": "Theme"
@@ -620,6 +683,9 @@
   },
   "dbf9b24193": {
     "translation": "Leave workspace"
+  },
+  "df7ef33b8d": {
+    "translation": "Waiting to convert"
   },
   "dfdb78a4e4": {
     "translation": "App debug flags"
@@ -642,8 +708,14 @@
   "e81c4e4f2b": {
     "translation": "or"
   },
+  "ea0f3fa522": {
+    "translation": "The model could not be converted."
+  },
   "ea4788705e": {
     "translation": "Cancel"
+  },
+  "eab2150e8e": {
+    "translation": "Converting: optimizing"
   },
   "eb1e2b0542": {
     "translation": "Ask the workspace owner for a new one."
@@ -675,6 +747,9 @@
   "f09b16bc5f": {
     "translation": "We use cookies to keep you logged in, to sync your files, and to collect analytics to help us improve tldraw."
   },
+  "f09bc49e98": {
+    "translation": "The file is empty."
+  },
   "f0e8bff6f9": {
     "translation": "User settings"
   },
@@ -701,6 +776,9 @@
   },
   "fc9d47046b": {
     "translation": "Are you sure you want to leave this workspace?"
+  },
+  "fde5639174": {
+    "translation": "Preparing the model…"
   },
   "fed5ec05eb": {
     "translation": "Copied link"
