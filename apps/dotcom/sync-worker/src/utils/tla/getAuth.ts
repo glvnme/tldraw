@@ -37,7 +37,44 @@ function getAuthorizedParties(env: Environment): string[] {
 	return parties
 }
 
+/**
+ * The local dev identity: one fixed user behind one fixed token, so `pnpm dev-app:local` runs the
+ * signed-in app with no Clerk instance (see apps/dotcom/README.md). Only authentication is replaced;
+ * every route still runs its own access checks against this user id. Mirrored by the client's
+ * `localDevAuth/clerkShim.tsx`.
+ */
+export const LOCAL_DEV_USER = {
+	// The home workspace takes this id, and mutators refuse an id outside 16-32 chars of [\w-].
+	id: 'local-dev-user-id',
+	name: 'Local dev',
+	email: 'dev@localhost',
+	token: 'local-dev-token',
+}
+
+/**
+ * Whether the local dev identity is on. The flag alone is not enough: `TLDRAW_ENV` is `development`
+ * only in `[env.dev]`, and `IS_LOCAL` is set only by the `wrangler dev` script, so a deployed worker
+ * ignores the flag even if someone sets it.
+ */
+export function isLocalDevAuth(env: Environment): boolean {
+	return env.LOCAL_DEV_AUTH === '1' && env.TLDRAW_ENV === 'development' && env.IS_LOCAL === 'true'
+}
+
+// The same three places a Clerk session token arrives: header, socket query string, cookie.
+function getLocalDevUserId(request: IRequest): string | null {
+	const token =
+		getBearerToken(request) ??
+		new URL(request.url).searchParams.get('accessToken') ??
+		/(?:^|;\s*)__session=([^;]*)/.exec(request.headers.get('cookie') ?? '')?.[1]
+	return token === LOCAL_DEV_USER.token ? LOCAL_DEV_USER.id : null
+}
+
 export async function getAuth(request: IRequest, env: Environment): Promise<SignedInAuth | null> {
+	if (isLocalDevAuth(env)) {
+		const userId = getLocalDevUserId(request)
+		return userId ? ({ userId } as SignedInAuth) : null
+	}
+
 	const clerk = getClerkClient(env)
 	const authorizedParties = getAuthorizedParties(env)
 
@@ -94,6 +131,7 @@ const ZERO_TOKEN_PURPOSE = 'zero'
  * token, keeps working across the deploy.
  */
 export async function getZeroAuth(request: IRequest, env: Environment): Promise<ZeroAuth | null> {
+	if (isLocalDevAuth(env)) return getAuth(request, env)
 	const header = request.headers.get('Authorization')
 	const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null
 	if (token && isOAuthAccessToken(token)) {
@@ -399,7 +437,8 @@ export async function hasReadAccessToFile(
 }
 
 export async function requireAdminAccess(env: Environment, auth: { userId: string } | null) {
-	if (!auth?.userId) {
+	// No Clerk to look the user up in, and the local dev user is not staff anyway.
+	if (!auth?.userId || isLocalDevAuth(env)) {
 		throw new StatusError(403, 'Unauthorized')
 	}
 	const user = await getClerkClient(env).users.getUser(auth.userId)

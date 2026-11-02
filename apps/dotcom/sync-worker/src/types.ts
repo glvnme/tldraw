@@ -81,6 +81,8 @@ export interface Environment {
 	SENTRY_DSN: string | undefined
 	SENTRY_CSP_REPORT_URI: string | undefined
 	IS_LOCAL: string | undefined
+	// `1` turns on the local dev identity (see isLocalDevAuth). Forwarded by the dev script.
+	LOCAL_DEV_AUTH: string | undefined
 	WORKER_NAME: string | undefined
 	ASSET_UPLOAD_ORIGIN: string | undefined
 	USER_CONTENT_URL: string | undefined
