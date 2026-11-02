@@ -10,6 +10,13 @@ import {
 	table,
 } from '@rocicorp/zero'
 import { IndexKey } from '@tldraw/utils'
+import type {
+	Model3dConvertStage,
+	Model3dErrorCode,
+	Model3dManifest,
+	Model3dSourceFormat,
+	Model3dStatus,
+} from './model3d'
 import { Role } from './roles'
 
 export interface ZColumn {
@@ -466,6 +473,24 @@ export interface TlaEffectOutbox {
 	lastError: string | null
 }
 
+/** A 3D model (migration 054). Worker-side only, like `TlaEffectOutbox`. */
+export interface TlaModel {
+	id: string
+	owningGroupId: string
+	createdBy: string
+	name: string
+	sourceFormat: Model3dSourceFormat
+	sourceBytes: number
+	status: Model3dStatus
+	stage: Model3dConvertStage | null
+	progress: number
+	errorCode: Model3dErrorCode | null
+	manifest: Model3dManifest | null
+	uploadId: string | null
+	createdAt: number
+	updatedAt: number
+}
+
 /**
  * The welcome-template pointer (see migration 035). Worker-side config only — not a Zero
  * table (absent from `createSchema` below), so it never replicates to clients.
@@ -515,6 +540,7 @@ export interface DB {
 	comment_mention: TlaCommentMention
 	comment_reaction: TlaCommentReaction & CommentReactionPersistenceColumns
 	effect_outbox: TlaEffectOutbox
+	model: TlaModel
 }
 
 export const schema = createSchema({
