@@ -264,15 +264,25 @@ function lerpCamera(a: Model3dCamera, b: Model3dCamera, t: number): Model3dCamer
 }
 
 function disposeObject(root: Object3D) {
+	// Materials share textures and textures share images, so each is released once.
+	const textures = new Set<Texture>()
 	root.traverse((obj) => {
 		const mesh = obj as Mesh
 		mesh.geometry?.dispose()
 		const materials = mesh.material ? [mesh.material].flat() : []
 		for (const material of materials) {
 			for (const value of Object.values(material)) {
-				if (value instanceof Texture) value.dispose()
+				if (value instanceof Texture) textures.add(value)
 			}
 			material.dispose()
 		}
 	})
+	const bitmaps = new Set<ImageBitmap>()
+	for (const texture of textures) {
+		texture.dispose()
+		if (typeof ImageBitmap !== 'undefined' && texture.image instanceof ImageBitmap) {
+			bitmaps.add(texture.image)
+		}
+	}
+	for (const bitmap of bitmaps) bitmap.close()
 }
