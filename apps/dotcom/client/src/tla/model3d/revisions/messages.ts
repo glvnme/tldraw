@@ -9,6 +9,11 @@ export const revisionMessages = defineMessages({
 	views: { defaultMessage: 'Views' },
 	draft: { defaultMessage: 'Draft' },
 	published: { defaultMessage: 'Published' },
+	edited: { defaultMessage: 'Edited' },
+	republish: { defaultMessage: 'Republish' },
+	snapshotSaving: { defaultMessage: 'Saving snapshot…' },
+	snapshotFailed: { defaultMessage: 'Snapshot not saved' },
+	retry: { defaultMessage: 'Retry' },
 	returnToView: { defaultMessage: 'Return to view' },
 	hideView: { defaultMessage: 'Hide view' },
 })

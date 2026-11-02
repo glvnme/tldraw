@@ -8,6 +8,7 @@ export const model3dMessages = defineMessages({
 	noAccess: { defaultMessage: 'You don’t have access to this model.' },
 	notFound: { defaultMessage: 'Model not found' },
 	conversionFailed: { defaultMessage: 'Conversion failed: {error}' },
+	retryFailed: { defaultMessage: 'Retry failed: {error}' },
 	waiting: { defaultMessage: 'Waiting to convert' },
 	fetching: { defaultMessage: 'Converting: fetching' },
 	parsing: { defaultMessage: 'Converting: parsing' },

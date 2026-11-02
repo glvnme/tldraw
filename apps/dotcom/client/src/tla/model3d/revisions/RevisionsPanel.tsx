@@ -10,7 +10,7 @@ import {
 	getModel3dRevision,
 	getModel3dRevisionView,
 	getModel3dRevisions,
-	getRevisionContentRecords,
+	getRevisionContentKey,
 	showModel3dRevision,
 } from './state'
 import styles from './revisions.module.css'
@@ -70,10 +70,10 @@ export function Model3dRevisionsPanel({
 	const rect = useModel3dRevisionLetterbox(modelId)
 	const [camera, setCamera] = useState(() => handle.getCamera())
 	const [overlay, setOverlay] = useState<{ revisionId: string; url: string } | null>(null)
-	// Re-exports a draft when its strokes change; a published revision hits the cache.
+	// Re-exports when the content changes, from this tab or any other.
 	const content = useValue(
 		'model3d revision content',
-		() => (revision ? getRevisionContentRecords(editor, revision.id) : null),
+		() => (revision ? getRevisionContentKey(editor, revision.id) : null),
 		[editor, revision?.id]
 	)
 
@@ -91,7 +91,7 @@ export function Model3dRevisionsPanel({
 		if (!revision) return
 		let cancelled = false
 		getModel3dRevisionOverlayUrl(editor, revision.id)
-			.then((url) => !cancelled && setOverlay({ revisionId: revision.id, url }))
+			.then((url) => url && !cancelled && setOverlay({ revisionId: revision.id, url }))
 			.catch((e) => console.error('Could not render the revision overlay', e))
 		return () => {
 			cancelled = true

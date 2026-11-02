@@ -4,9 +4,11 @@ import {
 	Color,
 	DirectionalLight,
 	HemisphereLight,
+	LoadingManager,
 	MathUtils,
 	Mesh,
 	Object3D,
+	OrthographicCamera,
 	PerspectiveCamera,
 	Scene,
 	Sphere,
@@ -17,6 +19,7 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { fetch } from 'tldraw'
 
 // Loaded only through dynamic `import()` from Model3dViewer.tsx so three.js stays out of the main bundle.
 
@@ -29,6 +32,7 @@ export interface Model3dViewerEngineOptions {
 	glbUrl: string
 	token: string | undefined
 	initialCamera: Model3dCamera | null
+	/** Aborting disposes the engine at once, whether it is still loading or not. */
 	signal: AbortSignal
 	onProgress(loaded: number, total: number): void
 	onContextLost(): void
@@ -39,7 +43,8 @@ const SET_CAMERA_ANIMATION_MS = 450
 export async function createModel3dViewerEngine(
 	opts: Model3dViewerEngineOptions
 ): Promise<Model3dViewerEngine> {
-	const { container } = opts
+	const { container, signal } = opts
+	signal.throwIfAborted()
 	const renderer = new WebGLRenderer({
 		powerPreference: 'high-performance',
 		antialias: true,
@@ -54,7 +59,9 @@ export async function createModel3dViewerEngine(
 
 	const scene = new Scene()
 	scene.background = new Color(0xeceef1)
-	const camera = new PerspectiveCamera(50, 1, 0.01, 1000)
+	const initialCamera = new PerspectiveCamera(50, 1, 0.01, 1000)
+	let camera: PerspectiveCamera | OrthographicCamera = initialCamera
+	let aspect = 1
 	scene.add(camera)
 	scene.add(new HemisphereLight(0xffffff, 0x8d8d8d, 1.4))
 	// Parented to the camera so the model stays lit from the viewer's side while orbiting.
@@ -62,9 +69,6 @@ export async function createModel3dViewerEngine(
 	sun.position.set(1, 2, 0)
 	sun.target.position.set(0, 0, -1)
 	camera.add(sun, sun.target)
-
-	const controls = new OrbitControls(camera, canvas)
-	controls.enableDamping = false
 
 	let disposed = false
 	let paused = false
@@ -83,33 +87,64 @@ export async function createModel3dViewerEngine(
 		frame = requestAnimationFrame(renderNow)
 	}
 
-	const getCamera = (): Model3dCamera => ({
-		projection: 'perspective',
-		position: camera.position.toArray(),
-		target: controls.target.toArray(),
-		up: camera.up.toArray(),
-		fov: camera.fov,
-		aspect: camera.aspect,
-	})
+	const getCamera = (): Model3dCamera => {
+		const base = {
+			position: camera.position.toArray(),
+			target: controls.target.toArray(),
+			up: camera.up.toArray(),
+			aspect,
+		}
+		return camera instanceof PerspectiveCamera
+			? { projection: 'perspective', ...base, fov: camera.fov }
+			: {
+					projection: 'orthographic',
+					...base,
+					viewHeight: (camera.top - camera.bottom) / camera.zoom,
+				}
+	}
 	const emitCameraChange = () => {
 		if (listeners.size === 0) return
 		const value = getCamera()
 		for (const listener of listeners) listener(value)
 	}
 
-	controls.addEventListener('start', () => cancelAnimationFrame(animation))
-	controls.addEventListener('change', () => {
-		requestRender()
-		emitCameraChange()
-	})
+	// OrbitControls reads `camera.up` once, in its constructor, so a new up or camera needs new controls.
+	const createControls = () => {
+		const next = new OrbitControls(camera, canvas)
+		next.enableDamping = false
+		next.addEventListener('start', () => cancelAnimationFrame(animation))
+		next.addEventListener('change', () => {
+			requestRender()
+			emitCameraChange()
+		})
+		return next
+	}
+	let controls = createControls()
+	const rebuildControls = () => {
+		const { maxDistance, enabled } = controls
+		controls.dispose()
+		controls = createControls()
+		controls.maxDistance = maxDistance
+		controls.enabled = enabled
+	}
+
+	const updateProjection = () => {
+		if (camera instanceof PerspectiveCamera) {
+			camera.aspect = aspect
+		} else {
+			camera.left = camera.bottom * aspect
+			camera.right = camera.top * aspect
+		}
+		camera.updateProjectionMatrix()
+	}
 
 	const resize = () => {
 		const { clientWidth: w, clientHeight: h } = container
 		// Zero while sketch mode hides the overlay.
 		if (!w || !h) return
 		renderer.setSize(w, h, false)
-		camera.aspect = w / h
-		camera.updateProjectionMatrix()
+		aspect = w / h
+		updateProjection()
 		if (!paused) renderNow()
 	}
 	const resizeObserver = new ResizeObserver(resize)
@@ -121,9 +156,12 @@ export async function createModel3dViewerEngine(
 	}
 	canvas.addEventListener('webglcontextlost', onContextLost)
 
+	const manager = new LoadingManager()
 	const dispose = () => {
 		if (disposed) return
 		disposed = true
+		signal.removeEventListener('abort', dispose)
+		manager.abort()
 		cancelAnimationFrame(frame)
 		cancelAnimationFrame(animation)
 		listeners.clear()
@@ -132,26 +170,29 @@ export async function createModel3dViewerEngine(
 		disposeObject(scene)
 		controls.dispose()
 		renderer.dispose()
-		renderer.forceContextLoss()
+		if (!renderer.getContext().isContextLost()) renderer.forceContextLoss()
 		canvas.remove()
 	}
 
+	signal.addEventListener('abort', dispose)
+
 	let model: Object3D
 	try {
-		const loader = new GLTFLoader()
+		const data = await fetchModel(opts.glbUrl, opts.token, signal, opts.onProgress)
+		// A private manager, so aborting stops this load's texture requests and no other viewer's.
+		const loader = new GLTFLoader(manager)
 		loader.setMeshoptDecoder(MeshoptDecoder)
-		if (opts.token) loader.setRequestHeader({ Authorization: `Bearer ${opts.token}` })
-		const gltf = await loader.loadAsync(opts.glbUrl, (e) => opts.onProgress(e.loaded, e.total))
-		model = gltf.scene
+		model = (await loader.parseAsync(data, '')).scene
 	} catch (e) {
 		dispose()
-		throw e
+		throw signal.aborted ? signal.reason : e
+	}
+	// Aborted while parsing: dispose already ran and could not see the model.
+	if (disposed) {
+		disposeObject(model)
+		throw signal.reason
 	}
 	scene.add(model)
-	if (opts.signal.aborted) {
-		dispose()
-		throw opts.signal.reason
-	}
 
 	const sphere = new Box3().setFromObject(model).getBoundingSphere(new Sphere())
 	const radius = sphere.radius > 0 ? sphere.radius : 1
@@ -159,19 +200,38 @@ export async function createModel3dViewerEngine(
 	camera.far = radius * 1000
 	controls.maxDistance = radius * 100
 
+	const setProjection = (projection: Model3dCamera['projection']) => {
+		const isPerspective = camera instanceof PerspectiveCamera
+		if (isPerspective === (projection === 'perspective')) return false
+		const next =
+			projection === 'perspective'
+				? new PerspectiveCamera(50, aspect, camera.near, camera.far)
+				: new OrthographicCamera(-1, 1, 1, -1, camera.near, camera.far)
+		camera.remove(sun, sun.target)
+		scene.remove(camera)
+		camera = next
+		scene.add(camera)
+		camera.add(sun, sun.target)
+		return true
+	}
+
 	const applyCamera = (value: Model3dCamera) => {
-		camera.up.fromArray(value.up)
-		controls.target.fromArray(value.target)
+		const swapped = setProjection(value.projection)
+		const up = new Vector3().fromArray(value.up).normalize()
+		const upChanged = !up.equals(camera.up)
+		camera.up.copy(up)
 		camera.position.fromArray(value.position)
 		if (value.projection === 'perspective') {
-			camera.fov = value.fov
+			;(camera as PerspectiveCamera).fov = value.fov
 		} else {
-			// Frame the same view height with the perspective camera.
-			const distance = value.viewHeight / 2 / Math.tan(MathUtils.degToRad(camera.fov / 2))
-			const dir = camera.position.clone().sub(controls.target).normalize()
-			camera.position.copy(controls.target).addScaledVector(dir, distance)
+			const ortho = camera as OrthographicCamera
+			ortho.top = value.viewHeight / 2
+			ortho.bottom = -value.viewHeight / 2
+			ortho.zoom = 1
 		}
-		camera.updateProjectionMatrix()
+		updateProjection()
+		if (swapped || upChanged) rebuildControls()
+		controls.target.fromArray(value.target)
 		controls.update()
 	}
 
@@ -179,7 +239,7 @@ export async function createModel3dViewerEngine(
 	if (opts.initialCamera) {
 		applyCamera(opts.initialCamera)
 	} else {
-		fitCamera(camera, controls.target, sphere.center, radius)
+		fitCamera(initialCamera, controls.target, sphere.center, radius)
 		controls.update()
 	}
 	renderNow()
@@ -187,10 +247,13 @@ export async function createModel3dViewerEngine(
 	return {
 		captureFrame() {
 			return new Promise((resolve, reject) => {
+				// A lost context draws nothing, so its frame would be blank.
+				const isLost = () => disposed || renderer.getContext().isContextLost()
+				if (isLost()) return reject(new Error('The 3D view is not available'))
 				// Without preserveDrawingBuffer the frame is only readable in the task that drew it.
 				renderNow()
 				canvas.toBlob((blob) => {
-					if (!blob) return reject(new Error('Could not capture the 3D view'))
+					if (!blob || isLost()) return reject(new Error('Could not capture the 3D view'))
 					resolve({
 						blob,
 						width: canvas.width,
@@ -249,30 +312,77 @@ function fitCamera(camera: PerspectiveCamera, target: Vector3, center: Vector3, 
 	camera.updateProjectionMatrix()
 }
 
+/** Animates in `b`'s projection; a projection change snaps on the first frame. */
 function lerpCamera(a: Model3dCamera, b: Model3dCamera, t: number): Model3dCamera {
+	const lerp = (x: number, y: number) => x + (y - x) * t
 	const lerp3 = (x: number[], y: number[]) =>
-		[0, 1, 2].map((i) => x[i] + (y[i] - x[i]) * t) as [number, number, number]
-	const fov = (c: Model3dCamera) => (c.projection === 'perspective' ? c.fov : 50)
-	return {
-		projection: 'perspective',
+		[0, 1, 2].map((i) => lerp(x[i], y[i])) as [number, number, number]
+	const base = {
 		position: lerp3(a.position, b.position),
 		target: lerp3(a.target, b.target),
 		up: lerp3(a.up, b.up),
-		fov: fov(a) + (fov(b) - fov(a)) * t,
 		aspect: b.aspect,
 	}
+	if (b.projection === 'orthographic') {
+		const from = a.projection === 'orthographic' ? a.viewHeight : b.viewHeight
+		return { projection: 'orthographic', ...base, viewHeight: lerp(from, b.viewHeight) }
+	}
+	const from = a.projection === 'perspective' ? a.fov : b.fov
+	return { projection: 'perspective', ...base, fov: lerp(from, b.fov) }
+}
+
+async function fetchModel(
+	url: string,
+	token: string | undefined,
+	signal: AbortSignal,
+	onProgress: (loaded: number, total: number) => void
+) {
+	const res = await fetch(url, {
+		headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+		signal,
+	})
+	if (!res.ok) throw new Error(`HTTP ${res.status}`)
+	if (!res.body) return res.arrayBuffer()
+	const total = Number(res.headers.get('Content-Length')) || 0
+	const reader = res.body.getReader()
+	const chunks: Uint8Array[] = []
+	let loaded = 0
+	for (;;) {
+		const { done, value } = await reader.read()
+		if (done) break
+		chunks.push(value)
+		loaded += value.byteLength
+		onProgress(loaded, total)
+	}
+	const data = new Uint8Array(loaded)
+	let offset = 0
+	for (const chunk of chunks) {
+		data.set(chunk, offset)
+		offset += chunk.byteLength
+	}
+	return data.buffer
 }
 
 function disposeObject(root: Object3D) {
+	// Materials share textures and textures share images, so each is released once.
+	const textures = new Set<Texture>()
 	root.traverse((obj) => {
 		const mesh = obj as Mesh
 		mesh.geometry?.dispose()
 		const materials = mesh.material ? [mesh.material].flat() : []
 		for (const material of materials) {
 			for (const value of Object.values(material)) {
-				if (value instanceof Texture) value.dispose()
+				if (value instanceof Texture) textures.add(value)
 			}
 			material.dispose()
 		}
 	})
+	const bitmaps = new Set<ImageBitmap>()
+	for (const texture of textures) {
+		texture.dispose()
+		if (typeof ImageBitmap !== 'undefined' && texture.image instanceof ImageBitmap) {
+			bitmaps.add(texture.image)
+		}
+	}
+	for (const bitmap of bitmaps) bitmap.close()
 }

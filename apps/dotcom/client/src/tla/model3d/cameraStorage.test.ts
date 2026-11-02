@@ -38,9 +38,20 @@ describe('model3d camera storage', () => {
 	})
 
 	it('keys the last camera by model', () => {
-		saveLastModel3dCamera('model-a', perspective)
-		expect(getFromLocalStorage(getModel3dCameraStorageKey('model-a'))).not.toBeNull()
-		expect(loadLastModel3dCamera('model-a')).toEqual(perspective)
-		expect(loadLastModel3dCamera('model-b')).toBeNull()
+		saveLastModel3dCamera('model-a', null, perspective)
+		expect(getFromLocalStorage(getModel3dCameraStorageKey('model-a', null))).not.toBeNull()
+		expect(loadLastModel3dCamera('model-a', null)).toEqual(perspective)
+		expect(loadLastModel3dCamera('model-b', null)).toBeNull()
+	})
+
+	it('keys the last camera by user when there is one', () => {
+		expect(getModel3dCameraStorageKey('model-a', 'user-1')).toBe(
+			'tldraw-model3d-camera:user-1:model-a'
+		)
+		expect(getModel3dCameraStorageKey('model-a', null)).toBe('tldraw-model3d-camera:model-a')
+		saveLastModel3dCamera('model-c', 'user-1', orthographic)
+		expect(loadLastModel3dCamera('model-c', 'user-1')).toEqual(orthographic)
+		expect(loadLastModel3dCamera('model-c', 'user-2')).toBeNull()
+		expect(loadLastModel3dCamera('model-c', null)).toBeNull()
 	})
 })

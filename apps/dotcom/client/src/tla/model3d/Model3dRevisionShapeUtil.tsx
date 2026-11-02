@@ -5,6 +5,7 @@ import {
 	model3dRevisionShapeProps,
 } from '@tldraw/dotcom-shared'
 import classNames from 'classnames'
+import { PointerEvent, ReactNode, useEffect, useState } from 'react'
 import {
 	BaseFrameLikeShapeUtil,
 	FileHelpers,
@@ -15,12 +16,21 @@ import {
 	TLShape,
 	TLShapePartial,
 	fetch,
+	useEditor,
 	useImageOrVideoAsset,
 	useTranslation,
+	useValue,
 } from 'tldraw'
 import { revisionMessages as messages } from './revisions/messages'
-import { openModel3dRevision } from './revisions/state'
-import { getModel3dSketchSession } from './sketch/session'
+import { getRevisionContentRecords, openModel3dRevision } from './revisions/state'
+import { computeStrokeHash } from './revisions/strokeHash'
+import {
+	getModel3dSketchSession,
+	getModel3dSnapshotUploads,
+	isModel3dSnapshotSaved,
+	publishModel3dRevision,
+	retryModel3dSnapshotUpload,
+} from './sketch/session'
 import styles from './revisions/revisions.module.css'
 
 const HEADING_HEIGHT = 22
@@ -72,17 +82,26 @@ export class Model3dRevisionShapeUtil extends BaseFrameLikeShapeUtil<TLModel3dRe
 		})
 	}
 
+	// The overlay is drawn axis-aligned over the 3D view, so the snapshot keeps its size and angle.
 	override canResize() {
 		return false
 	}
 
-	// A locked frame-like shape refuses new children and locks every stroke inside it.
+	override hideRotateHandle() {
+		return true
+	}
+
+	// Published strokes are frozen; `strokeHash` records exactly which ones.
+	override canReceiveNewChildrenOfType(shape: TLModel3dRevisionShape) {
+		return shape.props.publishedAt === null
+	}
+
 	override onBeforeCreate(shape: TLModel3dRevisionShape) {
-		return shape.isLocked ? { ...shape, isLocked: false } : undefined
+		return keepUnlockedAndUpright(shape)
 	}
 
 	override onBeforeUpdate(_prev: TLModel3dRevisionShape, next: TLModel3dRevisionShape) {
-		return next.isLocked ? { ...next, isLocked: false } : undefined
+		return keepUnlockedAndUpright(next)
 	}
 
 	// The base class lets arrows escape the clip; strokes over a snapshot must all stay inside.
@@ -134,8 +153,50 @@ export class Model3dRevisionShapeUtil extends BaseFrameLikeShapeUtil<TLModel3dRe
 	}
 }
 
+// A locked frame-like shape refuses new children and locks every stroke inside it. Rotating a
+// selection that includes the revision would otherwise turn it.
+function keepUnlockedAndUpright(shape: TLModel3dRevisionShape) {
+	return shape.isLocked || shape.rotation !== 0
+		? { ...shape, isLocked: false, rotation: 0 }
+		: undefined
+}
+
+/** True when a published revision's strokes no longer match its `strokeHash`. */
+function useIsRevisionEdited(shape: TLModel3dRevisionShape) {
+	const editor = useEditor()
+	const { strokeHash } = shape.props
+	const content = useValue(
+		'model3d revision content',
+		() => (strokeHash ? getRevisionContentRecords(editor, shape.id) : null),
+		[editor, shape.id, strokeHash]
+	)
+	const [edited, setEdited] = useState(false)
+	useEffect(() => {
+		if (!content || !strokeHash) return setEdited(false)
+		let cancelled = false
+		void computeStrokeHash(content).then((hash) => !cancelled && setEdited(hash !== strokeHash))
+		return () => {
+			cancelled = true
+		}
+	}, [content, strokeHash])
+	return edited
+}
+
 function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
+	const editor = useEditor()
 	const msg = useTranslation()
+	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
+	const isEdited = useIsRevisionEdited(shape) && shape.props.publishedAt !== null
+	const { assetId } = shape.props
+	const snapshot = useValue(
+		'model3d revision snapshot',
+		() => ({
+			saved: isModel3dSnapshotSaved(editor, assetId),
+			failed:
+				!!assetId && getModel3dSnapshotUploads(editor).get().get(assetId)?.status === 'failed',
+		}),
+		[editor, assetId]
+	)
 	const { url } = useImageOrVideoAsset({
 		shapeId: shape.id,
 		assetId: shape.props.assetId,
@@ -160,12 +221,41 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 				<span
 					className={classNames(
 						styles.badge,
-						isPublished ? styles.badgePublished : styles.badgeDraft
+						isEdited ? styles.badgeEdited : isPublished ? styles.badgePublished : styles.badgeDraft
 					)}
 				>
-					{msg(isPublished ? messages.published : messages.draft)}
+					{msg(isEdited ? messages.edited : isPublished ? messages.published : messages.draft)}
 				</span>
+				{isEdited && !isReadonly && snapshot.saved && (
+					<HeadingButton onClick={() => publishModel3dRevision(editor, shape.id)}>
+						{msg(messages.republish)}
+					</HeadingButton>
+				)}
+				{snapshot.failed && assetId && (
+					<>
+						<span className={styles.headingError}>{msg(messages.snapshotFailed)}</span>
+						<HeadingButton onClick={() => retryModel3dSnapshotUpload(editor, assetId)}>
+							{msg(messages.retry)}
+						</HeadingButton>
+					</>
+				)}
 			</div>
 		</>
+	)
+}
+
+// Marked handled so a press doesn't start a select or drag, like tldraw's HyperlinkButton.
+function HeadingButton({ onClick, children }: { onClick(): void; children: ReactNode }) {
+	const editor = useEditor()
+	const markAsHandled = (e: PointerEvent<HTMLButtonElement>) => editor.markEventAsHandled(e)
+	return (
+		<button
+			className={styles.headingButton}
+			onPointerDown={markAsHandled}
+			onPointerUp={markAsHandled}
+			onClick={onClick}
+		>
+			{children}
+		</button>
 	)
 }

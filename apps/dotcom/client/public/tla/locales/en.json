@@ -215,6 +215,9 @@
   "4d1c8263ba": {
     "translation": "Reload"
   },
+  "4d783c1889": {
+    "translation": "Republish"
+  },
   "5097d89907": {
     "translation": "Unsupported diagram, will generate SVG instead"
   },
@@ -310,6 +313,9 @@
   },
   "6637a98151": {
     "translation": "A new version of tldraw is available. Please reload the page to continue."
+  },
+  "67ed6ddb7d": {
+    "translation": "Edited"
   },
   "681e10aecb": {
     "translation": "New file"
@@ -491,6 +497,9 @@
   "9ceb927baa": {
     "translation": "Publish this file"
   },
+  "9db2a750da": {
+    "translation": "Snapshot not saved"
+  },
   "9e076f5885": {
     "translation": "Not found"
   },
@@ -645,6 +654,9 @@
   "c8a59e7135": {
     "translation": "Dismiss"
   },
+  "cbfa011ed8": {
+    "translation": "Saving snapshot…"
+  },
   "cceaefbc20": {
     "translation": "Share this file"
   },
@@ -704,6 +716,9 @@
   },
   "dbf9b24193": {
     "translation": "Leave workspace"
+  },
+  "defc490d7b": {
+    "translation": "Retry failed: {error}"
   },
   "df7ef33b8d": {
     "translation": "Waiting to convert"
