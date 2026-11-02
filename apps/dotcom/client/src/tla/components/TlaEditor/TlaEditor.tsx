@@ -51,6 +51,7 @@ import { ReadyWrapper, useSetIsReady } from '../../hooks/useIsReady'
 import { useNewRoomCreationTracking } from '../../hooks/useNewRoomCreationTracking'
 import { useShareLinkOpenTracking } from '../../hooks/useShareLinkOpenTracking'
 import { useTldrawCurrentUser } from '../../hooks/useUser'
+import { Model3dContextMenu } from '../../model3d/contextMenu'
 import { Model3dDebugMenuItems } from '../../model3d/debug'
 import { Model3dOverlayMount } from '../../model3d/overlay'
 import { getModel3dShapeVisibility } from '../../model3d/visibility'
@@ -344,6 +345,7 @@ function TlaEditorInner({ fileSlug, deepLinks, isEmbed = false }: TlaEditorProps
 	const instanceComponents = useMemo((): TLComponents => {
 		return {
 			...components,
+			ContextMenu: Model3dContextMenu,
 			DebugMenu: () => <CustomDebugMenu />,
 			InFrontOfTheCanvas: () => (
 				<>
