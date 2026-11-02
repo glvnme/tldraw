@@ -7,6 +7,7 @@ function object(range?: R2Range, withBody = true) {
 	return {
 		size: SIZE,
 		httpEtag: '"etag-1"',
+		uploaded: new Date('2026-11-01T12:00:00.000Z'),
 		range,
 		...(withBody ? { body: new Blob([new Uint8Array(range ? 10 : SIZE)]).stream() } : null),
 	} as unknown as R2ObjectBody
@@ -78,10 +79,24 @@ describe('buildGlbResponse', () => {
 		expect(response.headers.get('etag')).toBe('"etag-1"')
 	})
 
-	it('answers 412 for any other failed precondition', () => {
-		expect(buildGlbResponse(object(undefined, false), request({ 'if-match': '"x"' })).status).toBe(
-			412
-		)
+	it('answers 304 when R2 reports the If-Modified-Since precondition failed', () => {
+		const headers = { 'if-modified-since': 'Sun, 01 Nov 2026 12:00:00 GMT' }
+		expect(buildGlbResponse(object(undefined, false), request(headers)).status).toBe(304)
+	})
+
+	it('answers 412 when If-Match fails, even alongside If-None-Match', () => {
+		const headers = { 'if-match': '"x"', 'if-none-match': '"etag-1"' }
+		expect(buildGlbResponse(object(undefined, false), request(headers)).status).toBe(412)
+	})
+
+	it('answers 412 when the object changed after If-Unmodified-Since', () => {
+		const headers = { 'if-unmodified-since': 'Sun, 01 Nov 2026 11:00:00 GMT' }
+		expect(buildGlbResponse(object(undefined, false), request(headers)).status).toBe(412)
+	})
+
+	it('answers 304 when If-Match passes and If-None-Match fails', () => {
+		const headers = { 'if-match': '"etag-1"', 'if-none-match': '"etag-1"' }
+		expect(buildGlbResponse(object(undefined, false), request(headers)).status).toBe(304)
 	})
 })
 
