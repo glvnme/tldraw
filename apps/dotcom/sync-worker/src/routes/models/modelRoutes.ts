@@ -92,9 +92,8 @@ async function requireUserId(request: IRequest, env: Environment): Promise<strin
 	return auth?.userId ?? fail(401, 'unauthorized')
 }
 
-// The home workspace's id is its owner's user id and has no group_user row.
-function isMember(role: string | null, groupId: string, userId: string) {
-	return groupId === userId || can(role, 'accessFiles')
+function isMember(role: string | null) {
+	return can(role, 'accessFiles')
 }
 
 function modelIdParam(request: IRequest): string {
@@ -133,7 +132,7 @@ async function loadModelForMember(
 		.executeTakeFirst()
 	if (!row) fail(404, 'not_found')
 	const { role, ...model } = row
-	if (!isMember(role ?? null, model.owningGroupId, userId)) fail(403, 'forbidden')
+	if (!isMember(role ?? null)) fail(403, 'forbidden')
 	return model
 }
 
@@ -161,7 +160,7 @@ async function createModel(request: IRequest, env: Environment): Promise<Respons
 		const record = await getFileRecordWithRole(db, body.fileId, userId)
 		if (!record || record.file.isDeleted) fail(404, 'not_found')
 		const groupId = record.file.owningGroupId
-		if (!groupId || !isMember(record.role, groupId, userId)) fail(403, 'forbidden')
+		if (!groupId || !isMember(record.role)) fail(403, 'forbidden')
 
 		const modelId = uniqueId()
 		const upload = await bucket.createMultipartUpload(modelKeys.source(modelId))
