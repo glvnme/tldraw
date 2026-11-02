@@ -345,6 +345,40 @@ describe('user routes', () => {
 		})
 	})
 
+	it('finishes a complete that was interrupted after R2 completed the upload', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		const uploading = modelRow({ status: 'uploading', stage: null, uploadId: 'gone' })
+		const db = mockDb([
+			[{ ...uploading, role: 'owner' }],
+			[uploading],
+			[{ ...uploading, status: 'queued' }],
+		])
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(null, { status: 202 }))
+		)
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [{ partNumber: 1, etag: 'etag-1' }] }),
+		})
+		expect(await response.json()).toEqual({ status: 'queued' })
+		expect(db.queries.at(-1)!.parameters).toEqual(
+			expect.arrayContaining(['queued', 3, 'uploading'])
+		)
+	})
+
+	it('refuses an interrupted complete whose source does not match the declared size', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2]))
+		const uploading = modelRow({ status: 'uploading', stage: null, uploadId: 'gone' })
+		mockDb([[{ ...uploading, role: 'owner' }], [uploading]])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [{ partNumber: 1, etag: 'etag-1' }] }),
+		})
+		expect(response.status).toBe(400)
+		expect(await response.json()).toMatchObject({ error: 'upload_incomplete' })
+	})
+
 	it('refuses to complete an upload with no parts', async () => {
 		mockDb([[{ ...modelRow({ status: 'uploading', uploadId: 'upload-1' }), role: 'owner' }]])
 		const response = await call(`/app/models/${MODEL_ID}/complete`, {

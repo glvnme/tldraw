@@ -239,7 +239,13 @@ async function completeModelUpload(
 				// A concurrent complete got there first.
 				const current = await loadModel(db, modelId)
 				if (current.status !== 'uploading') return current.status
-				fail(400, 'upload_incomplete', (error as Error).message)
+				// Or an earlier complete finished in R2 and was interrupted before the update below,
+				// which would otherwise leave the row uploading for good.
+				const source = await bucket.head(modelKeys.source(modelId))
+				if (source?.size !== model.sourceBytes) {
+					fail(400, 'upload_incomplete', (error as Error).message)
+				}
+				size = source.size
 			}
 			const claimed = await db
 				.updateTable('model')
