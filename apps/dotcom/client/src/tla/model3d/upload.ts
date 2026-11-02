@@ -42,6 +42,8 @@ export function planUploadParts(size: number, partSize: number): Model3dUploadPa
 
 export interface Model3dLocalUpload {
 	status: 'uploading' | 'failed'
+	/** Null until the create call returns. */
+	modelId: string | null
 	/** 0 to 1, bytes acknowledged by the server. */
 	progress: number
 	error: string | null
@@ -110,7 +112,12 @@ async function runUpload(shapeId: TLShapeId) {
 	const report = () => {
 		if (isCancelled()) return
 		const total = job.created ? Math.max(1, Math.ceil(file.size / job.created.partSize)) : 1
-		setLocalUpload(shapeId, { status: 'uploading', progress: job.etags.size / total, error: null })
+		setLocalUpload(shapeId, {
+			status: 'uploading',
+			modelId: job.created?.modelId ?? null,
+			progress: job.etags.size / total,
+			error: null,
+		})
 	}
 	report()
 	try {
@@ -129,6 +136,7 @@ async function runUpload(shapeId: TLShapeId) {
 			if (isCancelled()) return
 			job.created = created
 			job.onCreated(created.modelId)
+			report()
 		}
 		const { modelId, partSize } = job.created
 		const pending = planUploadParts(file.size, partSize).filter((p) => !job.etags.has(p.partNumber))
@@ -171,6 +179,7 @@ async function runUpload(shapeId: TLShapeId) {
 		if (isCancelled()) return
 		setLocalUpload(shapeId, {
 			status: 'failed',
+			modelId: job.created?.modelId ?? null,
 			progress: model3dLocalUploads.get().get(shapeId)?.progress ?? 0,
 			error: e instanceof Error ? e.message : String(e),
 		})

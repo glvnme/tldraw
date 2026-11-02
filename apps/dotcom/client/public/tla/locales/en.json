@@ -275,6 +275,9 @@
   "5bffeebf03": {
     "translation": "<name>{author}</name> reacted to your comment"
   },
+  "5c8474d17f": {
+    "translation": "Upload interrupted. Drop the file again."
+  },
   "5d04a002ea": {
     "translation": "Unable to connect"
   },

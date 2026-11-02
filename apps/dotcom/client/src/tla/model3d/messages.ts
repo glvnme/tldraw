@@ -5,6 +5,8 @@ export const model3dMessages = defineMessages({
 	model: { defaultMessage: '3D model' },
 	uploading: { defaultMessage: 'Uploading' },
 	uploadFailed: { defaultMessage: 'Upload failed: {error}' },
+	uploadInterrupted: { defaultMessage: 'Upload interrupted. Drop the file again.' },
+	remove: { defaultMessage: 'Remove' },
 	retry: { defaultMessage: 'Retry' },
 	noAccess: { defaultMessage: 'You don’t have access to this model.' },
 	notFound: { defaultMessage: 'Model not found' },

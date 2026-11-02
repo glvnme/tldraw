@@ -120,6 +120,12 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	const localUpload = useValue('model3d upload', () => model3dLocalUploads.get().get(shape.id), [
 		shape.id,
 	])
+	// A copy of the shape shares the model, and the upload runs under the original's id.
+	const isUploadingHere = useValue(
+		'model3d upload here',
+		() => [...model3dLocalUploads.get().values()].some((upload) => upload.modelId === modelId),
+		[modelId]
+	)
 	const snapshot = useModel3dStatus(modelId, getToken)
 	const { url: thumbnailUrl } = useImageOrVideoAsset({
 		shapeId: shape.id,
@@ -157,10 +163,17 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		)
 	}
 
-	if (!modelId) {
+	// Only the tab that holds the file can finish an upload, so one this tab does not hold, after a
+	// reload or an undo of the shape's deletion, would otherwise read "Uploading" for good.
+	if (!isUploadingHere && (!modelId || status?.status === 'uploading')) {
 		return (
 			<Card name={name}>
-				<span>{msg(messages.uploading)}</span>
+				<span className={styles.error}>{msg(messages.uploadInterrupted)}</span>
+				{!isReadonly && (
+					<CardButton onClick={() => editor.deleteShapes([shape.id])}>
+						{msg(messages.remove)}
+					</CardButton>
+				)}
 			</Card>
 		)
 	}
