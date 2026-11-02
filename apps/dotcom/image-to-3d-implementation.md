@@ -12,14 +12,14 @@ Status: plan, 2026-11-02. Companion to `image-to-3d.md`, which holds the design 
 
 ## Stages
 
-| Stage          | Content                                                                                                                                                                                                                                                                                           | Depends on | Runs in parallel with |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------- |
-| T, trial       | Owner decision 4 first. Then throwaway scripts outside the app: the fal candidates on a fixed input set, the MoGe-2 ONNX port checked against the reference, Depth Anything 3 Small, CPU timings, fal hosts and retention headers, endpoint terms. Picks one object generator and one depth model | nothing    | prototype 2a and 2b   |
-| G0, contracts  | `image` source format, generation types and validators, the catalog with the trial's two winners, stage and error codes, artifact name, response union, status summary, manifest `sourceView`, migration 055 and its `DB` type, the overrides and context menu hooks in `TlaEditor`               | T, stage 1 | prototype 2a and 2b   |
-| G1, worker     | Create with `generation` and `regenerateFrom`, `model_generation` writes, job body, status summary, callback fields, `generated.glb` read and write, stale-job re-dispatch with `resume`                                                                                                          | G0, 2a     | G2, G3                |
-| G2, converter  | `pipeline/image.ts`, the `Generator` interface and fal adapter, egress wrapper, resume order, relief (the trial's depth model, mesh builder, textured GLB), weights script, env loading                                                                                                           | G0, 2a     | G1, G3                |
-| G3, client     | Make 3D action and dialog, capture, upload, placement, pending thumbnail, `meta.generatedFrom`, Regenerate, Select source shapes, Retry, relief opening camera in the viewer                                                                                                                      | G0, 2b     | G1, G2                |
-| I, integration | The end-to-end checks below, fixes, failure messages per error code                                                                                                                                                                                                                               | G1, G2, G3 | none                  |
+| Stage          | Content                                                                                                                                                                                                                                                                             | Depends on | Runs in parallel with |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------- |
+| T, trial       | Owner decision 2 first. Then throwaway scripts outside the app: the fal candidates on a fixed input set, the MoGe-2 ONNX port checked against the reference, Depth Anything 3 Small, CPU timings, fal hosts and retention headers. Picks one object generator and one depth model   | nothing    | prototype 2a and 2b   |
+| G0, contracts  | `image` source format, generation types and validators, the catalog with the trial's two winners, stage and error codes, artifact name, response union, status summary, manifest `sourceView`, migration 055 and its `DB` type, the overrides and context menu hooks in `TlaEditor` | T, stage 1 | prototype 2a and 2b   |
+| G1, worker     | Create with `generation` and `regenerateFrom`, `model_generation` writes, job body, status summary, callback fields, `generated.glb` read and write, stale-job re-dispatch with `resume`                                                                                            | G0, 2a     | G2, G3                |
+| G2, converter  | `pipeline/image.ts`, the `Generator` interface and fal adapter, egress wrapper, resume order, relief (the trial's depth model, mesh builder, textured GLB), weights script, env loading                                                                                             | G0, 2a     | G1, G3                |
+| G3, client     | Make 3D action and dialog, capture, upload, placement, pending thumbnail, `meta.generatedFrom`, Regenerate, Select source shapes, Retry, relief opening camera in the viewer                                                                                                        | G0, 2b     | G1, G2                |
+| I, integration | The end-to-end checks below, fixes, failure messages per error code                                                                                                                                                                                                                 | G1, G2, G3 | none                  |
 
 Render sketch is not a stage of v1; it follows I if the owner wants it (design, "After v1").
 
@@ -27,13 +27,13 @@ Render sketch is not a stage of v1; it follows I if the owner wants it (design, 
 
 Each stage has a stub check that needs only its own dependencies; the integrated checks run in I.
 
-| Stage | Stub check                                                                                                                                                                                                                                                                                                                                  |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T     | `trial-results.md` exists with a row per input and candidate (time, cost, triangles, texture size, GLB bytes, a one-line quality note from viewing the GLB in a local glTF viewer), the MoGe-2 port's maximum point error against the reference, CPU time and peak memory, the fal hosts seen, and each endpoint's terms with the date read |
-| G0    | `pnpm --filter @tldraw/dotcom-shared test run`, `pnpm --filter @tldraw/zero-cache test run`, `pnpm typecheck`; migration 055 applies on a fresh `pnpm dev-app`                                                                                                                                                                              |
-| G1    | Unit tests for request validation and the re-dispatch decision; a `curl` script creates an image model, uploads a PNG and sees the job body with `generation` arrive at a stub HTTP listener on the converter port                                                                                                                          |
-| G2    | `pnpm --filter @tldraw/model-converter test run`; the converter's `--once job.json` mode turns a PNG into `model.glb` and `manifest.json` in both modes against a local stub of the worker routes                                                                                                                                           |
-| G3    | `pnpm --filter dotcom test run` for capture sizing and placement; on a local board with a stub converter, Make 3D creates the pending shape with the input as thumbnail, and one undo removes it                                                                                                                                            |
+| Stage | Stub check                                                                                                                                                                                                                                                                                        |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T     | `trial-results.md` exists with a row per input and candidate (time, cost, triangles, texture size, GLB bytes, a one-line quality note from viewing the GLB in a local glTF viewer), the MoGe-2 port's maximum point error against the reference, CPU time and peak memory, and the fal hosts seen |
+| G0    | `pnpm --filter @tldraw/dotcom-shared test run`, `pnpm --filter @tldraw/zero-cache test run`, `pnpm typecheck`; migration 055 applies on a fresh `pnpm dev-app`                                                                                                                                    |
+| G1    | Unit tests for request validation and the re-dispatch decision; a `curl` script creates an image model, uploads a PNG and sees the job body with `generation` arrive at a stub HTTP listener on the converter port                                                                                |
+| G2    | `pnpm --filter @tldraw/model-converter test run`; the converter's `--once job.json` mode turns a PNG into `model.glb` and `manifest.json` in both modes against a local stub of the worker routes                                                                                                 |
+| G3    | `pnpm --filter dotcom test run` for capture sizing and placement; on a local board with a stub converter, Make 3D creates the pending shape with the input as thumbnail, and one undo removes it                                                                                                  |
 
 Integrated checks in I, on a local board with the real stack:
 
@@ -79,14 +79,13 @@ Each brief can be pasted to an agent with `image-to-3d.md` and this file.
 
 Goal: the evidence that picks one object generator and one depth model, before any contract is written.
 
-0. Before the first paid request: the prepaid fal balance is set with automatic top-up off, and the owner has approved the trial's endpoints and inputs (owner decision 4). This approval covers the trial only; business use is owner decision 2.
-1. Inputs: six to ten images the owner has the right to send (massing sketch, pencil sketch exported with `editor.toImage`, plain-background render, facade photo, interior photo, furniture photo).
-2. Object: run each input through fal's TRELLIS.2, Tripo H3.1 and Meshy 6 endpoints with plain `fetch` against the queue API, `X-Fal-Store-IO: 0` and the media lifecycle header set. Record time, the estimate, output size, triangle and texture counts, every host the responses and redirects touch, and whether the result is usable for review. Ask fal, or read their docs, whether TRELLIS.2's endpoint runs RMBG-2.0.
+0. Before the first paid request: the prepaid fal balance is set with automatic top-up off (owner decision 2).
+1. Inputs: six to ten images (massing sketch, pencil sketch exported with `editor.toImage`, plain-background render, facade photo, interior photo, furniture photo).
+2. Object: run each input through fal's TRELLIS.2, Hunyuan3D 3.1 Pro, Tripo H3.1 and Meshy 6 endpoints with plain `fetch` against the queue API, `X-Fal-Store-IO: 0` and the media lifecycle header set. Record time, the estimate, output size, triangle and texture counts, every host the responses and redirects touch, and whether the result is usable for review.
 3. Depth: export MoGe-2 ViT-S to ONNX per the repo's `docs/onnx.md`, port the focal and shift recovery and the reprojection to TypeScript, and compare against the reference `.infer()` on three inputs. Run Depth Anything 3 Small from `onnx-community`. Measure CPU time and peak memory on this machine at 518 px.
-4. Terms: for each endpoint, the terms URL and what it says about outputs, training and retention, with the date read.
-5. Write `apps/dotcom/image-to-3d-trial.md` and a recommendation: the object generator (or none) and the depth model.
+4. Write `apps/dotcom/image-to-3d-trial.md` and a recommendation: the object generator (or none) and the depth model.
 
-Done when the owner has picked both, which settles owner decision 3.
+Done when the owner has picked both, which settles owner decision 1.
 
 ### G0, contracts
 
@@ -95,7 +94,7 @@ Goal: every type, validator, catalog entry and table the other stages need, so G
 1. `manifest.ts`: `'image'` in `Model3dSourceFormat` and `MODEL3D_SOURCE_FORMATS`; optional `sourceView: Model3dCamera`.
 2. `api.ts`: the stage, error code, artifact name, `CreateModelResponse` union, job `generation` and `resume`, callback fields and status summary listed in the design's "Contract changes".
 3. `generation.ts`: `Model3dGenerationMode`, `Model3dGenerationRequest` (`mode`, `generator`, `seed`, `prompt`, `params`), `Model3dGenerationJob`, `Model3dGenerationSummary`, `Model3dGeneratedFromMeta`, with `T` validators the worker uses on request bodies.
-4. `generators.ts`: the two trial winners as a frozen array, each with its `approved` record, plus lookup by id and kind. Tests: ids are unique, every `relief` entry is local, every entry is approved.
+4. `generators.ts`: the two trial winners as a frozen array, plus lookup by id and kind. Tests: ids are unique, every `relief` entry is local.
 5. `055_model_generation.sql` with the columns in the design, a CHECK on `mode`, an index on `parentModelId`; not in `zero_data`. The row type and `DB` entry in `tlaSchema.ts`.
 6. `TlaEditor.tsx`: `model3dGenerateOverrides` in `editorOverrides` and `ContextMenu: Model3dContextMenu` in `components`. The placeholders return the overrides unchanged and render `DefaultContextMenu` with `DefaultContextMenuContent`.
 
@@ -103,7 +102,7 @@ Goal: every type, validator, catalog entry and table the other stages need, so G
 
 Goal: the sync worker accepts generation requests, records them, passes them through and recovers stale jobs, without ever calling a provider.
 
-1. `create`: for `sourceFormat: 'image'`, require a `generation` whose generator is in the catalog, approved and of the matching kind; reject inputs above 10 MB. Insert `model` and `model_generation` in one transaction. With `regenerateFrom`, check access to that model and that its source is an image, copy its source object within `MODELS`, set `parentModelId`, return the queued variant and dispatch.
+1. `create`: for `sourceFormat: 'image'`, require a `generation` whose generator is in the catalog and of the matching kind; reject inputs above 10 MB. Insert `model` and `model_generation` in one transaction. With `regenerateFrom`, check access to that model and that its source is an image, copy its source object within `MODELS`, set `parentModelId`, return the queued variant and dispatch.
 2. Dispatch: add `generation` to the job body; set `limits.timeoutMs` per mode (object 10 minutes, relief 2 minutes).
 3. `job-status`: store `providerTaskId`, `generatorVersion`, `inputSha256`, resolved `seed` and `params` when present; set `completedAt` on a terminal status.
 4. `artifact`: accept `generated.glb` for PUT, and for GET with the job token.
@@ -138,7 +137,7 @@ Tests: capture sizing and placement as pure functions.
 
 ### I, integration
 
-Run the integrated checks. Write one message per new error code. Apply owner decision 2. Update the design's decisions list with anything the build changed.
+Run the integrated checks. Write one message per new error code. Update the design's decisions list with anything the build changed.
 
 ## Order for a solo owner
 
