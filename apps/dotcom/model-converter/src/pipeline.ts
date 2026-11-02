@@ -104,11 +104,12 @@ async function prepareInput(
 			if (ifc.scene.meshes.length === 0) {
 				throw new ConvertError('conversion_failed', 'The IFC file has no geometry')
 			}
-			const m = ifc.coordinationMatrix
+			// web-ifc's translation is in Y-up axes; the offset is its negation in the Z-up source.
+			const [tx, ty, tz] = ifc.coordinationMatrix.slice(12, 15)
 			return {
 				name: 'in.glb',
 				bytes: writeGlb(ifc.scene),
-				transform: { recentreOffset: [-m[12], -m[13], -m[14]], scale: 1, upAxis: 'z' },
+				transform: { recentreOffset: [-tx, tz, -ty], scale: 1, upAxis: 'z' },
 				units: 'm',
 				versions: [`web-ifc ${ifc.webIfcVersion}`],
 			}

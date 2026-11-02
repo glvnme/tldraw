@@ -30,12 +30,7 @@ export interface GlbScene {
 	meshes: GlbMesh[]
 	materials: Rgba[]
 	nodes: GlbNode[]
-	/** Applied above every node, e.g. a Z-up to Y-up rotation. */
-	rootMatrix?: number[]
 }
-
-/** Rotates -90 degrees about X: Z-up source coordinates to glTF's Y-up. */
-export const Z_UP_TO_Y_UP = [1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1]
 
 const pad4 = (n: number) => (4 - (n % 4)) % 4
 
@@ -100,20 +95,15 @@ export function writeGlb(scene: GlbScene): Uint8Array {
 		doubleSided: true,
 	}))
 
-	const nodes: object[] = scene.nodes.map((node) => ({
+	const nodes = scene.nodes.map((node) => ({
 		mesh: node.mesh,
 		...(node.matrix ? { matrix: node.matrix } : null),
 	}))
-	let sceneNodes = nodes.map((_, i) => i)
-	if (scene.rootMatrix) {
-		nodes.push({ matrix: scene.rootMatrix, children: sceneNodes })
-		sceneNodes = [nodes.length - 1]
-	}
 
 	const json = {
 		asset: { version: '2.0', generator: '@tldraw/model-converter' },
 		scene: 0,
-		scenes: [{ nodes: sceneNodes }],
+		scenes: [{ nodes: nodes.map((_, i) => i) }],
 		nodes,
 		meshes,
 		materials,

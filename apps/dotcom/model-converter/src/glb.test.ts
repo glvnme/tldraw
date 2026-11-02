@@ -1,6 +1,6 @@
 import { pack } from 'gltfpack'
 import { describe, expect, it } from 'vitest'
-import { GlbScene, readGlb, writeGlb, Z_UP_TO_Y_UP } from './glb'
+import { GlbScene, readGlb, writeGlb } from './glb'
 import { summarizeGltf } from './gltfInfo'
 
 // One triangle (3 vertices, 3 indices) so the index view ends unaligned to 8 but every view still
@@ -63,16 +63,8 @@ describe('writeGlb', () => {
 		expect(json.materials[0]).toMatchObject({ alphaMode: 'BLEND', doubleSided: true })
 	})
 
-	it('adds a root node above every node for the root matrix', () => {
-		const { json } = readGlb(writeGlb({ ...triangleScene(), rootMatrix: Z_UP_TO_Y_UP })) as {
-			json: any
-		}
-		expect(json.scenes[0].nodes).toEqual([1])
-		expect(json.nodes[1]).toEqual({ matrix: Z_UP_TO_Y_UP, children: [0] })
-	})
-
 	it('round-trips through gltfpack with bounds and _BATCHID intact', async () => {
-		const files = new Map([['in.glb', writeGlb({ ...triangleScene(), rootMatrix: Z_UP_TO_Y_UP })]])
+		const files = new Map([['in.glb', writeGlb(triangleScene())]])
 		await pack(['-i', 'in.glb', '-o', 'out.glb', '-cc', '-mm'], {
 			read: (path) => files.get(path)!,
 			write: (path, data) => files.set(path, new Uint8Array(data)),
@@ -83,8 +75,8 @@ describe('writeGlb', () => {
 
 		const summary = summarizeGltf(json)
 		expect(summary.triangleCount).toBe(1)
-		// The node moves x by 10, then Z-up becomes Y-up: (x, y, z) -> (x, z, -y).
-		const expected = { min: [10, -1, -3], max: [12, 0, 0] }
+		// The node matrix moves x by 10.
+		const expected = { min: [10, 0, -1], max: [12, 3, 0] }
 		for (const key of ['min', 'max'] as const) {
 			summary.bounds![key].forEach((v, k) => expect(v).toBeCloseTo(expected[key][k], 2))
 		}

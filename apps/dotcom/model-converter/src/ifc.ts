@@ -1,11 +1,11 @@
 import { IfcAPI, LogLevel } from 'web-ifc'
 import { ConvertError } from './errors'
-import { GlbMesh, GlbNode, GlbScene, Rgba, Z_UP_TO_Y_UP } from './glb'
+import { GlbMesh, GlbNode, GlbScene, Rgba } from './glb'
 
 export interface IfcScene {
 	scene: GlbScene
 	triangleCount: number
-	/** Column-major; web-ifc's translation of the model to the origin, in source (Z-up) axes. */
+	/** Column-major; web-ifc's translation of the model to the origin, in output (Y-up) axes. */
 	coordinationMatrix: number[]
 	webIfcVersion: string
 }
@@ -16,6 +16,8 @@ const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
  * One mesh per (product, geometry, colour) and one node per placement. The product is part of the
  * key because `_BATCHID` carries the product's express id, so geometry shared between products
  * cannot share a mesh. gltfpack bakes the node matrices and merges by material afterwards.
+ *
+ * web-ifc's placement matrices already turn IFC's Z-up into glTF's Y-up, so no root rotation.
  */
 export async function ifcToScene(
 	bytes: Uint8Array,
@@ -78,7 +80,7 @@ export async function ifcToScene(
 		const coordinationMatrix = Array.from(api.GetCoordinationMatrix(modelId))
 		api.CloseModel(modelId)
 		return {
-			scene: { meshes, materials, nodes, rootMatrix: Z_UP_TO_Y_UP },
+			scene: { meshes, materials, nodes },
 			triangleCount,
 			coordinationMatrix,
 			webIfcVersion: api.GetVersion(),
