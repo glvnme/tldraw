@@ -24,13 +24,7 @@ import {
 import { revisionMessages as messages } from './revisions/messages'
 import { getRevisionContentRecords, openModel3dRevision } from './revisions/state'
 import { computeStrokeHash } from './revisions/strokeHash'
-import {
-	getModel3dSketchSession,
-	getModel3dSnapshotUploads,
-	isModel3dSnapshotSaved,
-	publishModel3dRevision,
-	retryModel3dSnapshotUpload,
-} from './sketch/session'
+import { getModel3dSketchSession, publishModel3dRevision } from './sketch/session'
 import styles from './revisions/revisions.module.css'
 
 const HEADING_HEIGHT = 22
@@ -213,16 +207,6 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 	const msg = useTranslation()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
 	const isEdited = useIsRevisionEdited(shape)
-	const { assetId } = shape.props
-	const snapshot = useValue(
-		'model3d revision snapshot',
-		() => ({
-			saved: isModel3dSnapshotSaved(editor, assetId),
-			failed:
-				!!assetId && getModel3dSnapshotUploads(editor).get().get(assetId)?.status === 'failed',
-		}),
-		[editor, assetId]
-	)
 	const { url } = useImageOrVideoAsset({
 		shapeId: shape.id,
 		assetId: shape.props.assetId,
@@ -244,18 +228,10 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 			>
 				<span className={styles.headingName}>{shape.props.name}</span>
 				<Model3dRevisionBadge shape={shape} isEdited={isEdited} />
-				{isEdited && !isReadonly && snapshot.saved && (
+				{isEdited && !isReadonly && (
 					<HeadingButton onClick={() => publishModel3dRevision(editor, shape.id)}>
 						{msg(messages.republish)}
 					</HeadingButton>
-				)}
-				{snapshot.failed && assetId && (
-					<>
-						<span className={styles.headingError}>{msg(messages.snapshotFailed)}</span>
-						<HeadingButton onClick={() => retryModel3dSnapshotUpload(editor, assetId)}>
-							{msg(messages.retry)}
-						</HeadingButton>
-					</>
 				)}
 			</div>
 		</>

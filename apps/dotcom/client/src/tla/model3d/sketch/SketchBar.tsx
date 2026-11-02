@@ -8,10 +8,7 @@ import {
 	exitModel3dSketch,
 	fitSketchCamera,
 	getModel3dSketchSession,
-	getModel3dSnapshotUploads,
-	isModel3dSnapshotSaved,
 	publishModel3dSketch,
-	retryModel3dSnapshotUpload,
 } from './session'
 import styles from '../revisions/revisions.module.css'
 
@@ -37,24 +34,6 @@ function Model3dSketchBar() {
 			return (session && getModel3dRevision(editor, session.revisionId)?.props.name) ?? ''
 		},
 		[editor]
-	)
-	const assetId = useValue(
-		'model3d sketch snapshot',
-		() => {
-			const session = getModel3dSketchSession(editor).get()
-			return (session && getModel3dRevision(editor, session.revisionId)?.props.assetId) ?? null
-		},
-		[editor]
-	)
-	const isSaved = useValue(
-		'model3d snapshot saved',
-		() => isModel3dSnapshotSaved(editor, assetId),
-		[editor, assetId]
-	)
-	const uploadFailed = useValue(
-		'model3d snapshot failed',
-		() => !!assetId && getModel3dSnapshotUploads(editor).get().get(assetId)?.status === 'failed',
-		[editor, assetId]
 	)
 
 	useEffect(
@@ -108,21 +87,7 @@ function Model3dSketchBar() {
 		<EditorPortal>
 			<div className={styles.sketchBar}>
 				<span className={styles.sketchName}>{msg(messages.sketching, { name })}</span>
-				{uploadFailed && assetId ? (
-					<>
-						<span className={styles.sketchError}>{msg(messages.snapshotFailed)}</span>
-						<button onClick={() => retryModel3dSnapshotUpload(editor, assetId)}>
-							{msg(messages.retry)}
-						</button>
-					</>
-				) : (
-					!isSaved && <span className={styles.sketchStatus}>{msg(messages.snapshotSaving)}</span>
-				)}
-				<button
-					className={styles.primary}
-					disabled={!isSaved}
-					onClick={() => publishModel3dSketch(editor)}
-				>
+				<button className={styles.primary} onClick={() => publishModel3dSketch(editor)}>
 					{msg(messages.publish)}
 				</button>
 				<button onClick={() => exitModel3dSketch(editor)}>{msg(messages.backTo3d)}</button>

@@ -8,7 +8,6 @@ import {
 	AssetRecordType,
 	Atom,
 	Editor,
-	TLAssetId,
 	TLImageAsset,
 	TLRecord,
 	TLShapeId,
@@ -51,37 +50,40 @@ export function getModel3dSketchSession(editor: Editor) {
 const entering = new WeakSet<Editor>()
 
 /**
- * Captures the viewer as a new draft revision next to the model, then turns the board into a
- * locked 2D view of just that revision so the normal tools draw onto the snapshot.
+ * Captures the viewer and uploads the snapshot, then adds it as a new draft revision next to the
+ * model and turns the board into a locked 2D view of just that revision so the normal tools draw
+ * onto it. Throws, with nothing created, if the snapshot cannot be uploaded.
  */
 export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId) {
 	const handle = getModel3dViewerHandle(editor).get()
-	const model = editor.getShape<TLModel3dShape>(modelShapeId)
-	if (!handle || !model || entering.has(editor) || editor.getIsReadonly()) return
+	if (!handle || entering.has(editor) || editor.getIsReadonly()) return
 	if (getModel3dSketchSession(editor).get()) return
 
 	entering.add(editor)
-	// Read in the same task as the capture renders, so the pose matches the pixels.
-	const pose = handle.getCamera()
-	let frame: Awaited<ReturnType<ViewerHandle['captureFrame']>>
 	try {
-		frame = await handle.captureFrame()
+		await captureAndEnterSketch(editor, modelShapeId, handle)
 	} finally {
 		entering.delete(editor)
 	}
-	// The viewer may have closed or reloaded while the frame was encoding.
-	if (getModel3dViewerHandle(editor).get() !== handle) return
-	if (getModel3dViewerState(editor).get()?.shapeId !== modelShapeId) return
+}
+
+async function captureAndEnterSketch(
+	editor: Editor,
+	modelShapeId: TLShapeId,
+	handle: ViewerHandle
+) {
+	const initialModel = editor.getShape<TLModel3dShape>(modelShapeId)
+	if (!initialModel) return
+	// Read in the same task as the capture renders, so the pose matches the pixels.
+	const pose = handle.getCamera()
+	const frame = await handle.captureFrame()
 
 	const viewport = {
 		w: Math.round(frame.width / frame.dpr),
 		h: Math.round(frame.height / frame.dpr),
 		dpr: frame.dpr,
 	}
-	const name = nextRevisionName(
-		getModel3dRevisions(editor, model.props.modelId).map((r) => r.props.name)
-	)
-	const fileName = `${model.props.altText || 'model'} ${name}.png`
+	const fileName = `${initialModel.props.altText || 'model'} view.png`
 	const file = new File([frame.blob], fileName, { type: 'image/png' })
 	const asset = AssetRecordType.create({
 		id: AssetRecordType.createId(),
@@ -98,9 +100,25 @@ export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId
 		},
 		meta: {},
 	}) as TLImageAsset
-	editor.createTemporaryAssetPreview(asset.id, file)
-	// Outside history, so undoing the revision and redoing it never brings back a src-less asset.
-	editor.run(() => editor.createAssets([asset]), { history: 'ignore' })
+	// Before the revision exists, so no client ever sees a revision without its image.
+	const { src, meta } = await editor.uploadAsset(asset, file)
+
+	// The viewer may have closed or reloaded, or the board changed, during the capture and upload.
+	const model = editor.getShape<TLModel3dShape>(modelShapeId)
+	if (!model || editor.getIsReadonly() || getModel3dSketchSession(editor).get()) return
+	if (getModel3dViewerHandle(editor).get() !== handle) return
+	if (getModel3dViewerState(editor).get()?.shapeId !== modelShapeId) return
+
+	const name = nextRevisionName(
+		getModel3dRevisions(editor, model.props.modelId).map((r) => r.props.name)
+	)
+	editor.run(
+		() =>
+			editor.createAssets([
+				{ ...asset, props: { ...asset.props, src }, meta: { ...asset.meta, ...meta } },
+			]),
+		{ history: 'ignore' }
+	)
 
 	const pageId = editor.getCurrentPageId()
 	const modelBounds = editor.getShapePageBounds(model)!
@@ -154,63 +172,6 @@ export async function enterModel3dSketch(editor: Editor, modelShapeId: TLShapeId
 	})
 	editor.selectNone()
 	editor.setCurrentTool('draw')
-
-	void uploadSnapshot(editor, asset, file)
-}
-
-interface SnapshotUpload {
-	status: 'uploading' | 'failed'
-	file: File
-}
-
-const snapshotUploads = new WeakCache<Editor, Atom<ReadonlyMap<TLAssetId, SnapshotUpload>>>()
-
-/** Snapshot uploads started in this tab that have not saved yet, by asset. */
-export function getModel3dSnapshotUploads(editor: Editor) {
-	return snapshotUploads.get(editor, () =>
-		atom<ReadonlyMap<TLAssetId, SnapshotUpload>>('model3d snapshot uploads', new Map())
-	)
-}
-
-function setSnapshotUpload(editor: Editor, assetId: TLAssetId, upload: SnapshotUpload | null) {
-	getModel3dSnapshotUploads(editor).update((prev) => {
-		const next = new Map(prev)
-		if (upload) next.set(assetId, upload)
-		else next.delete(assetId)
-		return next
-	})
-}
-
-/** Publishing needs a saved snapshot: other clients cannot see a src-less asset. */
-export function isModel3dSnapshotSaved(editor: Editor, assetId: TLAssetId | null) {
-	return !!assetId && !!editor.getAsset(assetId)?.props.src
-}
-
-export function retryModel3dSnapshotUpload(editor: Editor, assetId: TLAssetId) {
-	const upload = getModel3dSnapshotUploads(editor).get().get(assetId)
-	const asset = editor.getAsset(assetId)
-	if (upload?.status !== 'failed' || asset?.type !== 'image') return
-	void uploadSnapshot(editor, asset, upload.file)
-}
-
-async function uploadSnapshot(editor: Editor, asset: TLImageAsset, file: File) {
-	setSnapshotUpload(editor, asset.id, { status: 'uploading', file })
-	try {
-		const { src, meta } = await editor.uploadAsset(asset, file)
-		const current = editor.getAsset(asset.id)
-		setSnapshotUpload(editor, asset.id, null)
-		if (!current) return
-		editor.run(
-			() =>
-				editor.updateAssets([
-					{ ...current, props: { ...current.props, src }, meta: { ...current.meta, ...meta } },
-				]),
-			{ history: 'ignore' }
-		)
-	} catch (e) {
-		console.error('Could not upload the revision snapshot', e)
-		setSnapshotUpload(editor, asset.id, { status: 'failed', file })
-	}
 }
 
 /** Shows the revision at zoom 1 filling the viewport, or fitted if the viewport has changed size. */
@@ -282,7 +243,7 @@ export async function publishModel3dRevision(editor: Editor, revisionId: TLShape
 	} while (!isSameRecords(records, getRevisionContentRecords(editor, revisionId)))
 
 	const revision = getModel3dRevision(editor, revisionId)
-	if (!revision || !isModel3dSnapshotSaved(editor, revision.props.assetId)) return false
+	if (!revision) return false
 	editor.markHistoryStoppingPoint('model3d publish')
 	editor.run(() => {
 		editor.updateShape<TLModel3dRevisionShape>({

@@ -254,6 +254,12 @@
       "value": "Workspace name"
     }
   ],
+  "224ca2151f": [
+    {
+      "type": 0,
+      "value": "Saving view…"
+    }
+  ],
   "23dcace54a": [
     {
       "type": 0,
@@ -1239,12 +1245,6 @@
       "value": "Publish this file"
     }
   ],
-  "9db2a750da": [
-    {
-      "type": 0,
-      "value": "Snapshot not saved"
-    }
-  ],
   "9e076f5885": [
     {
       "type": 0,
@@ -1716,12 +1716,6 @@
       "value": "Dismiss"
     }
   ],
-  "cbfa011ed8": [
-    {
-      "type": 0,
-      "value": "Saving snapshot…"
-    }
-  ],
   "cceaefbc20": [
     {
       "type": 0,
@@ -2034,6 +2028,12 @@
     {
       "type": 0,
       "value": "Converting: optimizing"
+    }
+  ],
+  "eab7fe1e2a": [
+    {
+      "type": 0,
+      "value": "Could not save the view"
     }
   ],
   "eb1e2b0542": [

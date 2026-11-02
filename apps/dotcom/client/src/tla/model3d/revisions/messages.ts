@@ -11,9 +11,8 @@ export const revisionMessages = defineMessages({
 	published: { defaultMessage: 'Published' },
 	edited: { defaultMessage: 'Edited' },
 	republish: { defaultMessage: 'Republish' },
-	snapshotSaving: { defaultMessage: 'Saving snapshot…' },
-	snapshotFailed: { defaultMessage: 'Snapshot not saved' },
-	retry: { defaultMessage: 'Retry' },
+	savingView: { defaultMessage: 'Saving view…' },
+	saveViewFailed: { defaultMessage: 'Could not save the view' },
 	returnToView: { defaultMessage: 'Return to view' },
 	hideView: { defaultMessage: 'Hide view' },
 })

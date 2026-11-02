@@ -101,6 +101,9 @@
   "21f66c9c00": {
     "translation": "Workspace name"
   },
+  "224ca2151f": {
+    "translation": "Saving view…"
+  },
   "23dcace54a": {
     "translation": "You have been invited to join <strong>{workspaceName}</strong>. Create a free account to continue."
   },
@@ -518,9 +521,6 @@
   "9ceb927baa": {
     "translation": "Publish this file"
   },
-  "9db2a750da": {
-    "translation": "Snapshot not saved"
-  },
   "9e076f5885": {
     "translation": "Not found"
   },
@@ -684,9 +684,6 @@
   "c8a59e7135": {
     "translation": "Dismiss"
   },
-  "cbfa011ed8": {
-    "translation": "Saving snapshot…"
-  },
   "cceaefbc20": {
     "translation": "Share this file"
   },
@@ -791,6 +788,9 @@
   },
   "eab2150e8e": {
     "translation": "Converting: optimizing"
+  },
+  "eab7fe1e2a": {
+    "translation": "Could not save the view"
   },
   "eb1e2b0542": {
     "translation": "Ask the workspace owner for a new one."

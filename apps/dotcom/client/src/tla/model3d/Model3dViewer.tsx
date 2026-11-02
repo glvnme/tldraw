@@ -6,7 +6,7 @@ import {
 } from '@tldraw/dotcom-shared'
 import classNames from 'classnames'
 import { useEffect, useRef, useState } from 'react'
-import { EditorPortal, TLShapeId, useEditor, useTranslation, useValue } from 'tldraw'
+import { EditorPortal, TLShapeId, useEditor, useToasts, useTranslation, useValue } from 'tldraw'
 import { useTldrawCurrentUser } from '../hooks/useUser'
 import { model3dUrl } from './api'
 import { loadLastModel3dCamera, saveLastModel3dCamera } from './cameraStorage'
@@ -101,6 +101,8 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 	const [load, setLoad] = useState<LoadState>({ kind: 'loading', progress: 0 })
 	const [engine, setEngine] = useState<Model3dViewerEngine | null>(null)
 	const letterbox = useModel3dRevisionLetterbox(modelId)
+	const { addToast } = useToasts()
+	const [isSavingView, setIsSavingView] = useState(false)
 
 	useEffect(() => {
 		const container = rContainer.current
@@ -177,6 +179,18 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 		)
 	}
 
+	const lockAndSketch = async () => {
+		setIsSavingView(true)
+		try {
+			await enterModel3dSketch(editor, shapeId)
+		} catch (e) {
+			console.error('Could not save the revision snapshot', e)
+			addToast({ severity: 'error', title: msg(revisionMessages.saveViewFailed) })
+		} finally {
+			setIsSavingView(false)
+		}
+	}
+
 	return (
 		<>
 			<div
@@ -212,8 +226,8 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 			) : null}
 			<div className={styles.viewerBar}>
 				{engine && !isReadonly && (
-					<button onClick={() => enterModel3dSketch(editor, shapeId)}>
-						{msg(revisionMessages.lockAndSketch)}
+					<button disabled={isSavingView} onClick={lockAndSketch}>
+						{msg(isSavingView ? revisionMessages.savingView : revisionMessages.lockAndSketch)}
 					</button>
 				)}
 				{engine && !isReadonly && (
