@@ -2,6 +2,7 @@ import type { ViewerHandle } from '@tldraw/dotcom-shared'
 import classNames from 'classnames'
 import { CSSProperties, useEffect, useState } from 'react'
 import { TldrawUiIcon, useEditor, useTranslation, useValue } from 'tldraw'
+import { Model3dRevisionEditBadge } from '../Model3dRevisionShapeUtil'
 import { isCameraAtPose } from './cameraMatch'
 import { Model3dRect, letterbox } from './layout'
 import { revisionMessages as messages } from './messages'
@@ -147,9 +148,7 @@ export function Model3dRevisionsPanel({
 							onClick={() => showModel3dRevision(editor, r.id)}
 						>
 							<span className={styles.listName}>{r.props.name}</span>
-							{r.props.publishedAt === null && (
-								<span className={styles.draftTag}>{msg(messages.draft)}</span>
-							)}
+							<Model3dRevisionEditBadge shape={r} />
 						</button>
 					))}
 				</div>

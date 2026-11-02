@@ -179,14 +179,40 @@ function useIsRevisionEdited(shape: TLModel3dRevisionShape) {
 			cancelled = true
 		}
 	}, [content, strokeHash])
-	return edited
+	return edited && shape.props.publishedAt !== null
+}
+
+/** The draft, published or edited badge, on the revision's heading and in the viewer's list. */
+export function Model3dRevisionBadge({
+	shape,
+	isEdited,
+}: {
+	shape: TLModel3dRevisionShape
+	isEdited: boolean
+}) {
+	const msg = useTranslation()
+	const isPublished = shape.props.publishedAt !== null
+	return (
+		<span
+			className={classNames(
+				styles.badge,
+				isEdited ? styles.badgeEdited : isPublished ? styles.badgePublished : styles.badgeDraft
+			)}
+		>
+			{msg(isEdited ? messages.edited : isPublished ? messages.published : messages.draft)}
+		</span>
+	)
+}
+
+export function Model3dRevisionEditBadge({ shape }: { shape: TLModel3dRevisionShape }) {
+	return <Model3dRevisionBadge shape={shape} isEdited={useIsRevisionEdited(shape)} />
 }
 
 function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 	const editor = useEditor()
 	const msg = useTranslation()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
-	const isEdited = useIsRevisionEdited(shape) && shape.props.publishedAt !== null
+	const isEdited = useIsRevisionEdited(shape)
 	const { assetId } = shape.props
 	const snapshot = useValue(
 		'model3d revision snapshot',
@@ -202,7 +228,6 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 		assetId: shape.props.assetId,
 		width: shape.props.w,
 	})
-	const isPublished = shape.props.publishedAt !== null
 	return (
 		<>
 			<HTMLContainer>
@@ -218,14 +243,7 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 				}}
 			>
 				<span className={styles.headingName}>{shape.props.name}</span>
-				<span
-					className={classNames(
-						styles.badge,
-						isEdited ? styles.badgeEdited : isPublished ? styles.badgePublished : styles.badgeDraft
-					)}
-				>
-					{msg(isEdited ? messages.edited : isPublished ? messages.published : messages.draft)}
-				</span>
+				<Model3dRevisionBadge shape={shape} isEdited={isEdited} />
 				{isEdited && !isReadonly && snapshot.saved && (
 					<HeadingButton onClick={() => publishModel3dRevision(editor, shape.id)}>
 						{msg(messages.republish)}
