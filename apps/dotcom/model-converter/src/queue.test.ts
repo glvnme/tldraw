@@ -1,6 +1,6 @@
 import type { Model3dConvertJob } from '@tldraw/dotcom-shared'
 import { describe, expect, it, vi } from 'vitest'
-import { JobQueue } from './queue'
+import { JobQueue, RunJob } from './queue'
 
 vi.mock('./errors', () => ({ log: () => {} }))
 
@@ -17,7 +17,7 @@ function deferred() {
 describe('JobQueue', () => {
 	it('admits the same job once while it is running or queued', async () => {
 		const gate = deferred()
-		const run = vi.fn(() => gate.promise)
+		const run = vi.fn<RunJob>(() => gate.promise)
 		const jobs = new JobQueue(run)
 		expect(jobs.admit(job('m1', 't1'))).toBe('queued')
 		expect(jobs.admit(job('m2', 't2'))).toBe('queued')
@@ -31,7 +31,7 @@ describe('JobQueue', () => {
 
 	it('replaces a queued job with a newer attempt for the same model', async () => {
 		const gate = deferred()
-		const run = vi.fn(() => gate.promise)
+		const run = vi.fn<RunJob>(() => gate.promise)
 		const jobs = new JobQueue(run)
 		jobs.admit(job('m1', 't1'))
 		jobs.admit(job('m2', 'old'))
