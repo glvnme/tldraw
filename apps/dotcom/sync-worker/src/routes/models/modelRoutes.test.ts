@@ -451,6 +451,47 @@ describe('user routes', () => {
 		)
 	})
 
+	it('leaves the artifacts alone when a racing retry claimed the model first', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		await env.MODELS!.put(`m/${MODEL_ID}/model.glb`, new Uint8Array([1]))
+		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
+		// The claim updates no row; the reload sees the winner's attempt.
+		mockDb([[{ ...failed, role: 'member' }], [], [modelRow({ status: 'converting' })]])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [] }),
+		})
+		expect(await response.json()).toEqual({ status: 'converting' })
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/model.glb`)).not.toBeNull()
+		expect(waitUntil).not.toHaveBeenCalled()
+	})
+
+	it('returns a claimed retry to failed if the old artifacts cannot be cleared', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		env.MODELS!.delete = vi.fn(async () => Promise.reject(new Error('R2 down')))
+		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
+		const db = mockDb([
+			[{ ...failed, role: 'member' }],
+			[{ ...failed, status: 'queued', jobId: 'job-2' }],
+		])
+		const response = await call(`/app/models/${MODEL_ID}/complete`, {
+			method: 'POST',
+			body: JSON.stringify({ parts: [] }),
+		})
+		expect(response.status).toBe(500)
+		const revert = db.queries.at(-1)!
+		expect(revert.sql).toMatch(/^update "model" set "status" = \$1, "errorCode" = \$2/)
+		expect(revert.parameters).toEqual([
+			'failed',
+			'conversion_failed',
+			expect.any(Number),
+			MODEL_ID,
+			'job-2',
+			'queued',
+		])
+		expect(waitUntil).not.toHaveBeenCalled()
+	})
+
 	it('treats complete on a converting model as a no-op', async () => {
 		mockDb([[{ ...modelRow(), role: 'member' }]])
 		vi.stubGlobal('fetch', vi.fn())

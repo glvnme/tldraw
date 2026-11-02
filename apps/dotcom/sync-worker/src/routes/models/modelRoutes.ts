@@ -266,10 +266,10 @@ async function completeModelUpload(
 			return 'queued'
 		}
 
-		// The client's retry: run the conversion again from the stored source.
+		// The client's retry: run the conversion again from the stored source. The claim comes first
+		// so only one of two racing retries deletes artifacts, and never the winner's.
 		if (model.status === 'failed') {
 			if (!(await bucket.head(modelKeys.source(modelId)))) fail(409, 'invalid_state')
-			await bucket.delete(MODEL_ARTIFACT_NAMES.map((name) => modelKeys.artifact(modelId, name)))
 			const claimed = await db
 				.updateTable('model')
 				.set({
@@ -286,6 +286,18 @@ async function completeModelUpload(
 				.returningAll()
 				.executeTakeFirst()
 			if (!claimed) return (await loadModel(db, modelId)).status
+			try {
+				await bucket.delete(MODEL_ARTIFACT_NAMES.map((name) => modelKeys.artifact(modelId, name)))
+			} catch (error) {
+				await db
+					.updateTable('model')
+					.set({ status: 'failed', errorCode: model.errorCode, updatedAt: Date.now() })
+					.where('id', '=', modelId)
+					.where('jobId', '=', claimed.jobId)
+					.where('status', '=', 'queued')
+					.execute()
+				fail(500, 'internal_error', `Could not clear old artifacts: ${(error as Error).message}`)
+			}
 			ctx.waitUntil(dispatchJob(env, claimed))
 			return 'queued'
 		}
