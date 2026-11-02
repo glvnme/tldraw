@@ -3,17 +3,22 @@ import { AssetRecordType, Editor, TLImageAsset, TLShapeId } from 'tldraw'
 
 const THUMBNAIL_WIDTH = 512
 
-/** Captures the open viewer, crops it to the shape's aspect ratio and stores it as the shape's image asset. */
+/**
+ * Captures the open viewer, crops it to the shape's aspect ratio and stores it as the shape's image asset.
+ * `signal` aborts on context loss, which can blank the frame; a frame captured after that is dropped.
+ */
 export async function captureModel3dThumbnail(
 	editor: Editor,
 	shapeId: TLShapeId,
-	handle: ViewerHandle
+	handle: ViewerHandle,
+	signal: AbortSignal
 ) {
 	const shape = editor.getShape<TLModel3dShape>(shapeId)
 	if (!shape || shape.type !== MODEL3D_SHAPE_TYPE || shape.props.assetId) return
 	if (editor.getIsReadonly()) return
 
 	const frame = await handle.captureFrame()
+	signal.throwIfAborted()
 	const w = THUMBNAIL_WIDTH
 	const h = Math.round((w * shape.props.h) / shape.props.w)
 	const bitmap = await createImageBitmap(frame.blob)

@@ -96,7 +96,9 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 	useEffect(() => {
 		const container = rContainer.current
 		if (!container || !isReady) return
+		// Aborted on close, on retry and on context loss; an aborted attempt never publishes anything.
 		const abort = new AbortController()
+		const { signal } = abort
 		let created: Model3dViewerEngine | null = null
 		setLoad({ kind: 'loading', progress: 0 })
 
@@ -106,30 +108,36 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 					import('./viewerEngine'),
 					getToken(),
 				])
-				if (abort.signal.aborted) return
+				if (signal.aborted) return
 				const defaultView = editor.getShape<TLModel3dShape>(shapeId)?.props.defaultView ?? null
-				created = await createModel3dViewerEngine({
+				const engine = await createModel3dViewerEngine({
 					container,
 					glbUrl: model3dUrl(model3dPaths.glb(modelId)),
 					token,
 					initialCamera: loadLastModel3dCamera(modelId) ?? defaultView,
-					signal: abort.signal,
+					signal,
 					onProgress: (loaded, total) => {
-						if (total) setLoad({ kind: 'loading', progress: loaded / total })
+						if (total && !signal.aborted) setLoad({ kind: 'loading', progress: loaded / total })
 					},
 					onContextLost: () => {
-						getModel3dViewerHandle(editor).set(null)
+						abort.abort()
+						if (created && getModel3dViewerHandle(editor).get() === created) {
+							getModel3dViewerHandle(editor).set(null)
+						}
+						setEngine(null)
 						setLoad({ kind: 'context-lost' })
 					},
 				})
-				setEngine(created)
+				if (signal.aborted) return
+				created = engine
+				setEngine(engine)
 				setLoad({ kind: 'ready' })
-				getModel3dViewerHandle(editor).set(created)
-				await captureModel3dThumbnail(editor, shapeId, created).catch((e) =>
-					console.error('Could not save the model thumbnail', e)
-				)
+				getModel3dViewerHandle(editor).set(engine)
+				await captureModel3dThumbnail(editor, shapeId, engine, signal).catch((e) => {
+					if (!signal.aborted) console.error('Could not save the model thumbnail', e)
+				})
 			} catch (e) {
-				if (abort.signal.aborted) return
+				if (signal.aborted) return
 				setLoad({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
 			}
 		})()

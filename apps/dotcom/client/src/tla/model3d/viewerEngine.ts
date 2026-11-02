@@ -4,6 +4,7 @@ import {
 	Color,
 	DirectionalLight,
 	HemisphereLight,
+	LoadingManager,
 	MathUtils,
 	Mesh,
 	Object3D,
@@ -17,6 +18,7 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { fetch } from 'tldraw'
 
 // Loaded only through dynamic `import()` from Model3dViewer.tsx so three.js stays out of the main bundle.
 
@@ -29,6 +31,7 @@ export interface Model3dViewerEngineOptions {
 	glbUrl: string
 	token: string | undefined
 	initialCamera: Model3dCamera | null
+	/** Aborting disposes the engine at once, whether it is still loading or not. */
 	signal: AbortSignal
 	onProgress(loaded: number, total: number): void
 	onContextLost(): void
@@ -39,7 +42,8 @@ const SET_CAMERA_ANIMATION_MS = 450
 export async function createModel3dViewerEngine(
 	opts: Model3dViewerEngineOptions
 ): Promise<Model3dViewerEngine> {
-	const { container } = opts
+	const { container, signal } = opts
+	signal.throwIfAborted()
 	const renderer = new WebGLRenderer({
 		powerPreference: 'high-performance',
 		antialias: true,
@@ -121,9 +125,12 @@ export async function createModel3dViewerEngine(
 	}
 	canvas.addEventListener('webglcontextlost', onContextLost)
 
+	const manager = new LoadingManager()
 	const dispose = () => {
 		if (disposed) return
 		disposed = true
+		signal.removeEventListener('abort', dispose)
+		manager.abort()
 		cancelAnimationFrame(frame)
 		cancelAnimationFrame(animation)
 		listeners.clear()
@@ -132,26 +139,29 @@ export async function createModel3dViewerEngine(
 		disposeObject(scene)
 		controls.dispose()
 		renderer.dispose()
-		renderer.forceContextLoss()
+		if (!renderer.getContext().isContextLost()) renderer.forceContextLoss()
 		canvas.remove()
 	}
 
+	signal.addEventListener('abort', dispose)
+
 	let model: Object3D
 	try {
-		const loader = new GLTFLoader()
+		const data = await fetchModel(opts.glbUrl, opts.token, signal, opts.onProgress)
+		// A private manager, so aborting stops this load's texture requests and no other viewer's.
+		const loader = new GLTFLoader(manager)
 		loader.setMeshoptDecoder(MeshoptDecoder)
-		if (opts.token) loader.setRequestHeader({ Authorization: `Bearer ${opts.token}` })
-		const gltf = await loader.loadAsync(opts.glbUrl, (e) => opts.onProgress(e.loaded, e.total))
-		model = gltf.scene
+		model = (await loader.parseAsync(data, '')).scene
 	} catch (e) {
 		dispose()
-		throw e
+		throw signal.aborted ? signal.reason : e
+	}
+	// Aborted while parsing: dispose already ran and could not see the model.
+	if (disposed) {
+		disposeObject(model)
+		throw signal.reason
 	}
 	scene.add(model)
-	if (opts.signal.aborted) {
-		dispose()
-		throw opts.signal.reason
-	}
 
 	const sphere = new Box3().setFromObject(model).getBoundingSphere(new Sphere())
 	const radius = sphere.radius > 0 ? sphere.radius : 1
@@ -187,10 +197,13 @@ export async function createModel3dViewerEngine(
 	return {
 		captureFrame() {
 			return new Promise((resolve, reject) => {
+				// A lost context draws nothing, so its frame would be blank.
+				const isLost = () => disposed || renderer.getContext().isContextLost()
+				if (isLost()) return reject(new Error('The 3D view is not available'))
 				// Without preserveDrawingBuffer the frame is only readable in the task that drew it.
 				renderNow()
 				canvas.toBlob((blob) => {
-					if (!blob) return reject(new Error('Could not capture the 3D view'))
+					if (!blob || isLost()) return reject(new Error('Could not capture the 3D view'))
 					resolve({
 						blob,
 						width: canvas.width,
@@ -261,6 +274,38 @@ function lerpCamera(a: Model3dCamera, b: Model3dCamera, t: number): Model3dCamer
 		fov: fov(a) + (fov(b) - fov(a)) * t,
 		aspect: b.aspect,
 	}
+}
+
+async function fetchModel(
+	url: string,
+	token: string | undefined,
+	signal: AbortSignal,
+	onProgress: (loaded: number, total: number) => void
+) {
+	const res = await fetch(url, {
+		headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+		signal,
+	})
+	if (!res.ok) throw new Error(`HTTP ${res.status}`)
+	if (!res.body) return res.arrayBuffer()
+	const total = Number(res.headers.get('Content-Length')) || 0
+	const reader = res.body.getReader()
+	const chunks: Uint8Array[] = []
+	let loaded = 0
+	for (;;) {
+		const { done, value } = await reader.read()
+		if (done) break
+		chunks.push(value)
+		loaded += value.byteLength
+		onProgress(loaded, total)
+	}
+	const data = new Uint8Array(loaded)
+	let offset = 0
+	for (const chunk of chunks) {
+		data.set(chunk, offset)
+		offset += chunk.byteLength
+	}
+	return data.buffer
 }
 
 function disposeObject(root: Object3D) {
