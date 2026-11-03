@@ -56,7 +56,7 @@ Confidence: {n}%, {ready_status}.
    - Anything you can answer yourself from repo context should not become an open question.
 3. For visual bugs, identify a reproduction target when possible:
    - Examples app: `localhost:5420` from `pnpm dev`.
-   - tldraw.com app: `localhost:3000` from `pnpm dev-app`.
+   - tldraw.com app: `localhost:25497` from `pnpm dev-app`.
    - Docs site: `localhost:3001` from `pnpm dev-docs`.
    - If the user provided an image and you have a path or URL for it, embed or attach it in the GitHub issue.
    - If the image is visible only in the chat and cannot be attached, describe it as visual context. Do not write "screenshot attached" unless the issue actually contains the image.
