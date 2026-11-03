@@ -9,7 +9,7 @@ import { getStorageStateFileName } from './helpers'
 const db = new Kysely<DB>({
 	dialect: new PostgresDialect({
 		pool: new pg.Pool({
-			connectionString: 'postgresql://user:password@127.0.0.1:6432/postgres',
+			connectionString: 'postgresql://user:password@127.0.0.1:25509/postgres',
 			application_name: 'migrate',
 			idleTimeoutMillis: 10_000,
 			max: 10,
@@ -52,7 +52,7 @@ export class Database {
 		if (!id) return
 		try {
 			// eslint-disable-next-line no-restricted-globals
-			await fetch(`http://localhost:3000/api/app/__test__/user/${id}/prepare-for-test`, {
+			await fetch(`http://localhost:25497/api/app/__test__/user/${id}/prepare-for-test`, {
 				method: 'POST',
 			})
 		} catch (e) {

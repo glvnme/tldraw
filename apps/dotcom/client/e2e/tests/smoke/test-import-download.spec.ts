@@ -18,7 +18,7 @@ test.describe('import from URL (signed in)', () => {
 	})
 
 	test('redirects to root when no url param is provided', async ({ page }) => {
-		await page.goto('http://localhost:3000/import')
+		await page.goto('http://localhost:25497/import')
 		// Should redirect away from /import immediately (signed-in users then get
 		// forwarded on to their most-recent file, so we can't assert a specific URL).
 		await expect(page).not.toHaveURL(/\/import/)
@@ -28,7 +28,7 @@ test.describe('import from URL (signed in)', () => {
 		const badUrl = 'https://e2e-mock.tldraw.xyz/not-found.tldr'
 		await page.route(badUrl, (route) => route.fulfill({ status: 404 }))
 
-		await page.goto(`http://localhost:3000/import?url=${encodeURIComponent(badUrl)}`)
+		await page.goto(`http://localhost:25497/import?url=${encodeURIComponent(badUrl)}`)
 		await expect(page).not.toHaveURL(/\/import/)
 		await expect(page.getByText('Import failed', { exact: true })).toBeVisible()
 	})
@@ -44,7 +44,7 @@ test.describe('import from URL (signed in)', () => {
 			})
 		)
 
-		await page.goto(`http://localhost:3000/import?url=${encodeURIComponent(badUrl)}`)
+		await page.goto(`http://localhost:25497/import?url=${encodeURIComponent(badUrl)}`)
 		await expect(page).not.toHaveURL(/\/import/)
 		await expect(page.getByText('Import failed', { exact: true })).toBeVisible()
 	})

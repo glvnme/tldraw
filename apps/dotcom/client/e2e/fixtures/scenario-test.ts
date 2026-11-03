@@ -23,7 +23,7 @@ type SharedLinkType = 'edit' | 'view' | 'no-access'
 type WorkspaceMemberRole = 'owner' | 'member'
 
 const SCENARIO_USER_POOL_START = 4
-const ROOT_URL = 'http://localhost:3000'
+const ROOT_URL = 'http://localhost:25497'
 const MENU_INTERACTION_TIMEOUT = 5_000
 
 export async function selectTlaMenuOption(page: Page, select: Locator, optionLabel: string) {
@@ -98,7 +98,7 @@ export class DotcomActor {
 		this.workspaceInviteDialog = new WorkspaceInviteDialog(page)
 	}
 
-	async goto(url = 'http://localhost:3000/') {
+	async goto(url = 'http://localhost:25497/') {
 		await this.homePage.goto(url)
 		await this.waitForAppReady()
 	}

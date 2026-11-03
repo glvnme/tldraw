@@ -7,7 +7,7 @@ import { hasTransactionBlock } from './migrationSql'
 
 const postgresConnectionString =
 	process.env.BOTCOM_POSTGRES_POOLED_CONNECTION_STRING ||
-	'postgresql://user:password@127.0.0.1:6543/postgres'
+	'postgresql://user:password@127.0.0.1:25508/postgres'
 console.log('Using connection string:', postgresConnectionString)
 
 const migrationsPath = `./migrations`

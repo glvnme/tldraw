@@ -26,7 +26,7 @@ set -e
 # REQUIREMENTS:
 #   - Docker must be running
 #   - Snapshot must exist in .snapshots/ directory
-#   - dev-app must NOT be running (checked via http://localhost:3000)
+#   - dev-app must NOT be running (checked via http://localhost:25497)
 #   - All containers using the postgres volume will be stopped/removed
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,11 +60,11 @@ echo ""
 
 # Check if dev-app is running
 echo "Checking if dev-app is running..."
-if curl -s -f http://localhost:3000 > /dev/null 2>&1; then
-  echo "  ❌ ERROR: dev-app is running on port 3000"
+if curl -s -f http://localhost:25497 > /dev/null 2>&1; then
+  echo "  ❌ ERROR: dev-app is running on port 25497"
   echo "  Please stop the dev-app before restoring state:"
   echo "    - Press Ctrl+C in the terminal running 'pnpm dev-app'"
-  echo "    - Or run 'pkill -f \"vite.*3000\"' to kill the process"
+  echo "    - Or run 'pkill -f \"vite.*25497\"' to kill the process"
   echo ""
   echo "  This prevents data corruption during the restore process."
   exit 1

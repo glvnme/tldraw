@@ -20,6 +20,24 @@ pnpm dev-app
 
 This brings up the whole stack — postgres and pgbouncer (in containers), zero-cache, the workers, and the client — as host processes. The ports are fixed, so only one dotcom dev stack can run at a time. The services and their startup order are defined in [`process-compose.yaml`](process-compose.yaml).
 
+Open `http://localhost:25497`. The local services use these ports:
+
+| Service           | Port        |
+| ----------------- | ----------- |
+| Client            | 25497       |
+| Sync worker       | 25498       |
+| Asset upload      | 25499       |
+| User content      | 25500       |
+| Image resize      | 25501       |
+| Model converter   | 25502       |
+| Zero cache        | 25503–25505 |
+| PostgreSQL        | 25508       |
+| PgBouncer         | 25509       |
+| Process manager   | 25510       |
+| Worker inspectors | 25511–25514 |
+
+The client uses `--strictPort`. Workers check their ports before startup. If a port is in use, stop the process that holds it and start the stack again. A five-digit port can still have a conflict.
+
 ### Working with the stack
 
 By default `pnpm dev-app` opens the process-compose TUI, listing each service with its status, logs, and health.
@@ -37,4 +55,4 @@ By default `pnpm dev-app` opens the process-compose TUI, listing each service wi
 
 - **Reset server state:** `pnpm dev-app:clean` tears down the postgres container + volume, the zero replica, and wrangler state.
 
-Browser-side state is separate. After starting the stack, visit `http://localhost:3000/dev/reset-local-state` to clear local storage, IndexedDB, caches, service workers, accessible cookies, and Clerk session state for the current origin.
+Browser-side state is separate. After starting the stack, visit `http://localhost:25497/dev/reset-local-state` to clear local storage, IndexedDB, caches, service workers, accessible cookies, and Clerk session state for the current origin.

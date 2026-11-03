@@ -23,7 +23,7 @@ test.describe('invite sign-in scenarios', () => {
 		// the anonymous editor renders behind the sign-in dialog (which names the
 		// invited workspace) and the URL reflects the active invite flow.
 		await visitor.page.goto(inviteUrl)
-		await visitor.page.waitForURL('http://localhost:3000/?invite=true')
+		await visitor.page.waitForURL('http://localhost:25497/?invite=true')
 		await expect(visitor.signInDialog.googleButton).toBeVisible()
 		await expect(visitor.page.locator('strong', { hasText: workspaceName })).toBeVisible()
 		await expect(visitor.homePage.tldrawCanvas).toBeVisible()
@@ -36,7 +36,7 @@ test.describe('invite sign-in scenarios', () => {
 		// Dismissing clears the marker, leaving the visitor on the usable anonymous
 		// editor at the bare root.
 		await visitor.page.keyboard.press('Escape')
-		await visitor.page.waitForURL('http://localhost:3000/')
+		await visitor.page.waitForURL('http://localhost:25497/')
 		await expect(visitor.signInDialog.googleButton).not.toBeVisible()
 		await expect(visitor.homePage.signInButton).toBeVisible()
 
@@ -53,7 +53,7 @@ test.describe('invite sign-in scenarios', () => {
 		// back-navigable history state: going back re-activates the marker and the
 		// dialog returns.
 		await visitor.page.goBack()
-		await visitor.page.waitForURL('http://localhost:3000/?invite=true')
+		await visitor.page.waitForURL('http://localhost:25497/?invite=true')
 		await expect(visitor.signInDialog.googleButton).toBeVisible()
 		await expect(visitor.page.locator('strong', { hasText: workspaceName })).toBeVisible()
 	})

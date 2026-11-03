@@ -14,6 +14,7 @@ describe('isAllowedOrigin', () => {
 		'https://tldraw.dev',
 		'https://tldrawusercontent.com',
 		'http://localhost:3000',
+		'http://localhost:25497',
 		// The sandbox ChatGPT and Codex render MCP app views in; Codex desktop has its own scheme.
 		'https://abc123.web-sandbox.oaiusercontent.com',
 		'codex-sandbox://mcp-server-tldraw-abc123.web-sandbox.oaiusercontent.com',

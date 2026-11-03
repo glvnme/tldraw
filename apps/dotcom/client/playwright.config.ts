@@ -7,7 +7,7 @@ const scenarioTestMatch = /.*\.scenario\.spec\.ts/
 // scenario runner. See e2e/README.md.
 const smokeTestMatch = /tests\/smoke\/.*\.spec\.ts/
 
-// Fail fast if the dev stack does not come up: not a single test runs until http://localhost:3000
+// Fail fast if the dev stack does not come up: not a single test runs until http://localhost:25497
 // responds, so a stuck server otherwise burns CI minutes. process-compose brings up postgres ->
 // migrate -> zero-cache -> workers -> client (see apps/dotcom/process-compose.yaml); it should boot
 // well within this. If a CI cold start ever legitimately needs longer, raise this rather than
@@ -45,7 +45,7 @@ export default defineConfig({
 	timeout: 30 * 1000,
 	use: {
 		/* Base URL to use in actions like `await page.goto('/')`. */
-		// baseURL: 'http://127.0.0.1:3000',
+		// baseURL: 'http://127.0.0.1:25497',
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 		trace: 'on-first-retry',
@@ -121,7 +121,7 @@ export default defineConfig({
 	/* Run your local dev server before starting the tests */
 	webServer: {
 		command: process.env.CI ? 'VITE_PREVIEW=1 pnpm dev-app' : 'pnpm preview-app',
-		url: 'http://localhost:3000',
+		url: 'http://localhost:25497',
 		reuseExistingServer: !process.env.CI,
 		cwd: path.join(__dirname, '../../../'),
 		timeout: process.env.CI ? CI_WEB_SERVER_TIMEOUT_MS : 300_000,

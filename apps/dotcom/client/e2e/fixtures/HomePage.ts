@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 import { Editor } from './Editor'
 import { step } from './tla-test'
 
-const rootUrl = 'http://localhost:3000/'
+const rootUrl = 'http://localhost:25497/'
 
 export class HomePage {
 	public readonly signInButton: Locator

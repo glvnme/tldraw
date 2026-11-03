@@ -89,7 +89,7 @@ api.Dispose()
 
 ## Repo facts
 
-- CSP (`apps/dotcom/client/src/utils/csp.ts`): add `'wasm-unsafe-eval'` to `script-src`. Model traffic goes through `/api/app/models/*`, which the Vite proxy sends to the sync worker on 8787, so `connect-src 'self'` covers it. Absolute `http://localhost:8787` URLs would be blocked.
+- CSP (`apps/dotcom/client/src/utils/csp.ts`): add `'wasm-unsafe-eval'` to `script-src`. Model traffic goes through `/api/app/models/*`, which the Vite proxy sends to the sync worker on 25498, so `connect-src 'self'` covers it. Absolute `http://localhost:25498` URLs would be blocked.
 - `process-compose.yaml`: add the converter with the TCP readiness probe pattern used for zero-cache.
 - The `MODELS` R2 binding follows the `ROOMS` pattern in the sync worker `wrangler.toml`, per environment.
 

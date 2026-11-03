@@ -28,8 +28,8 @@ export const MODEL_JOB_EXPIRY_MS = MODEL_JOB_LIMITS.timeoutMs + 5 * 60_000
 // The converter runs one job at a time, so a token must outlive the queue ahead of it.
 export const MODEL_JOB_TOKEN_TTL_MS = 24 * 60 * 60_000
 
-const DEFAULT_CONVERTER_URL = 'http://127.0.0.1:8790/jobs'
-const DEFAULT_WORKER_ORIGIN = 'http://127.0.0.1:8787'
+const DEFAULT_CONVERTER_URL = 'http://127.0.0.1:25502/jobs'
+const DEFAULT_WORKER_ORIGIN = 'http://127.0.0.1:25498'
 
 export function getConverterUrl(env: Environment) {
 	return env.MODEL_CONVERTER_URL || DEFAULT_CONVERTER_URL

@@ -184,7 +184,7 @@ async function build() {
 		thumbnailHtml.replace('<!-- $PRELOADED_FONTS -->', () => fontPreloads)
 	)
 
-	const multiplayerServerUrl = getMultiplayerServerURL() ?? 'http://localhost:8787'
+	const multiplayerServerUrl = getMultiplayerServerURL() ?? 'http://localhost:25498'
 
 	// Includes the .js.map files: they're content-hashed like the chunks they describe, so they're
 	// safe to cache immutably, and we now serve them rather than stripping them from the deploy.

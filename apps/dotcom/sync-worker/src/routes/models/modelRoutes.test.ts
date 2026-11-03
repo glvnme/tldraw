@@ -101,7 +101,7 @@ let env: Environment
 let waitUntil: ReturnType<typeof vi.fn>
 
 function call(path: string, init: RequestInit & { headers?: Record<string, string> } = {}) {
-	const request = new Request(`http://127.0.0.1:8787${path}`, init)
+	const request = new Request(`http://127.0.0.1:25498${path}`, init)
 	return modelRoutes.fetch(request, env, {
 		waitUntil,
 	} as unknown as ExecutionContext) as Promise<Response>
@@ -382,7 +382,7 @@ describe('user routes', () => {
 		])('fails a quiet row when %s', async (_, probe, errorCode) => {
 			const { response, db, fetchMock, quiet } = await pollQuietRow(`job-${errorCode}`, probe)
 			expect(response.status).toBe(200)
-			expect(fetchMock.mock.calls[0][0]).toBe(`http://127.0.0.1:8790/jobs/${MODEL_ID}`)
+			expect(fetchMock.mock.calls[0][0]).toBe(`http://127.0.0.1:25502/jobs/${MODEL_ID}`)
 			const update = db.queries.at(-1)!
 			expect(update.sql).toMatch(/^update "model" set "status" = \$1/)
 			expect(update.sql).toContain('"jobId" = $')
@@ -470,13 +470,13 @@ describe('user routes', () => {
 
 		await waitUntil.mock.calls[0][0]
 		const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-		expect(url).toBe('http://127.0.0.1:8790/jobs')
+		expect(url).toBe('http://127.0.0.1:25502/jobs')
 		expect(JSON.parse(init.body as string)).toMatchObject({
 			modelId: MODEL_ID,
 			sourceFormat: 'ifc',
-			sourceUrl: `http://127.0.0.1:8787/app/models/${MODEL_ID}/source`,
-			artifactUrlBase: `http://127.0.0.1:8787/app/models/${MODEL_ID}/artifacts`,
-			statusUrl: `http://127.0.0.1:8787/app/models/${MODEL_ID}/job-status`,
+			sourceUrl: `http://127.0.0.1:25498/app/models/${MODEL_ID}/source`,
+			artifactUrlBase: `http://127.0.0.1:25498/app/models/${MODEL_ID}/artifacts`,
+			statusUrl: `http://127.0.0.1:25498/app/models/${MODEL_ID}/job-status`,
 		})
 	})
 

@@ -329,7 +329,7 @@ describe('local dev auth', () => {
 	const devEnv = { ...env, LOCAL_DEV_AUTH: '1', TLDRAW_ENV: 'development', IS_LOCAL: 'true' }
 
 	function requestWith(headers: Record<string, string>, query = '') {
-		return { url: `http://localhost:8787/app/x${query}`, headers: new Headers(headers) } as any
+		return { url: `http://localhost:25498/app/x${query}`, headers: new Headers(headers) } as any
 	}
 
 	beforeEach(() => {

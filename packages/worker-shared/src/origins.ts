@@ -19,6 +19,7 @@
 export function isAllowedOrigin(origin: string) {
 	if (!origin) return undefined
 	if (origin === 'http://localhost:3000') return origin
+	if (origin === 'http://localhost:25497') return origin
 	if (origin === 'http://localhost:5420') return origin
 	if (origin === 'https://meet.google.com') return origin
 	if (origin === 'https://tldraw.dev') return origin

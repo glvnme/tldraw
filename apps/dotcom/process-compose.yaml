@@ -12,7 +12,7 @@ processes:
       command: docker compose -f apps/dotcom/zero-cache/docker/docker-compose.yml down
     readiness_probe:
       exec:
-        command: node -e "require('net').connect(6543,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
+        command: node -e "require('net').connect(25508,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
       initial_delay_seconds: 2
       period_seconds: 2
       # ~180s budget: the first run pulls the postgres image, which can take minutes.
@@ -33,16 +33,17 @@ processes:
     command: pnpm --filter @tldraw/zero-cache exec zero-cache
     environment:
       - NODE_ENV=development
-      - ZERO_UPSTREAM_DB=postgresql://user:password@127.0.0.1:6543/postgres
-      - ZERO_CVR_DB=postgresql://user:password@127.0.0.1:6543/postgres
-      - ZERO_CHANGE_DB=postgresql://user:password@127.0.0.1:6543/postgres
+      - ZERO_PORT=25503
+      - ZERO_UPSTREAM_DB=postgresql://user:password@127.0.0.1:25508/postgres
+      - ZERO_CVR_DB=postgresql://user:password@127.0.0.1:25508/postgres
+      - ZERO_CHANGE_DB=postgresql://user:password@127.0.0.1:25508/postgres
       - ZERO_REPLICA_FILE=/tmp/tldraw-dotcom-zero-dev.db
       - ZERO_NUM_SYNC_WORKERS=1
       - ZERO_CVR_MAX_CONNS=6
       - ZERO_UPSTREAM_MAX_CONNS=6
       - ZERO_APP_PUBLICATIONS=zero_data
-      - ZERO_MUTATE_URL=http://localhost:8787/app/zero/mutate
-      - ZERO_QUERY_URL=http://localhost:8787/app/zero/query
+      - ZERO_MUTATE_URL=http://localhost:25498/app/zero/mutate
+      - ZERO_QUERY_URL=http://localhost:25498/app/zero/query
       - ZERO_ENABLE_CRUD_MUTATIONS=false
       - ZERO_LOG_LEVEL=info
       - ZERO_ENABLE_STARTUP_MESSAGE=0
@@ -52,7 +53,7 @@ processes:
         condition: process_completed_successfully
     readiness_probe:
       exec:
-        command: node -e "require('net').connect(4848,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
+        command: node -e "require('net').connect(25503,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
       initial_delay_seconds: 3
       period_seconds: 2
       failure_threshold: 90
@@ -65,7 +66,7 @@ processes:
         condition: process_healthy
     readiness_probe:
       exec:
-        command: node -e "require('net').connect(8787,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
+        command: node -e "require('net').connect(25498,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
       initial_delay_seconds: 3
       period_seconds: 2
       failure_threshold: 60
@@ -74,19 +75,19 @@ processes:
   # uninstantiated DO, so without this a restarted stack wouldn't drain trigger-only writes until
   # the first mutation. A one-shot (not the readiness probe) so it doesn't poke every 2s forever.
   wake-outbox:
-    command: node -e "fetch('http://127.0.0.1:8787/app/outbox-status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+    command: node -e "fetch('http://127.0.0.1:25498/app/outbox-status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
     depends_on:
       sync-worker:
         condition: process_healthy
     availability:
       restart: 'no'
 
-  # 3D model converter — sync-worker POSTs jobs to it on 8790
+  # 3D model converter — sync-worker POSTs jobs to it on 25502
   model-converter:
     command: pnpm --filter @tldraw/model-converter dev
     readiness_probe:
       exec:
-        command: node -e "require('net').connect(8790,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
+        command: node -e "require('net').connect(25502,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',()=>process.exit(1))"
       initial_delay_seconds: 2
       period_seconds: 2
       failure_threshold: 30

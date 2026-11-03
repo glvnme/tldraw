@@ -14,7 +14,7 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - 6543:5432
+      - 25508:5432
     environment:
       POSTGRES_USER: user
       POSTGRES_DB: postgres
@@ -38,7 +38,7 @@ services:
     image: edoburu/pgbouncer:latest
     restart: always
     ports:
-      - "6432:6432"
+      - "25509:6432"
     environment:
       DATABASE_URL: postgres://user:password@zstart_postgres:5432/postgres
     volumes:
