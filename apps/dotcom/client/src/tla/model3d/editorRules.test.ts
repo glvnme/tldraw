@@ -1,6 +1,7 @@
 import {
 	MODEL3D_REVISION_SHAPE_TYPE,
 	MODEL3D_SHAPE_TYPE,
+	Model3dCamera,
 	TLModel3dRevisionShape,
 	TLModel3dShape,
 } from '@tldraw/dotcom-shared'
@@ -13,6 +14,14 @@ import { Model3dShapeUtil } from './Model3dShapeUtil'
 const shapeUtils = [...defaultShapeUtils, Model3dShapeUtil, Model3dRevisionShapeUtil]
 const id = createShapeId('model')
 const thumbnailId = AssetRecordType.createId('thumbnail')
+const defaultView: Model3dCamera = {
+	projection: 'perspective',
+	position: [4, 3, 4],
+	target: [0, 0, 0],
+	up: [0, 1, 0],
+	aspect: 1.3,
+	fov: 50,
+}
 
 let editor: Editor
 
@@ -48,12 +57,12 @@ describe('model3d editor rules', () => {
 		editor.markHistoryStoppingPoint('drop')
 		editor.createShape<TLModel3dShape>({ id, type: MODEL3D_SHAPE_TYPE })
 		assign({ modelId: 'model-1' })
-		assign({ assetId: thumbnailId })
+		assign({ assetId: thumbnailId, defaultView })
 
 		editor.undo()
 		expect(editor.getShape(id)).toBeUndefined()
 		editor.redo()
-		expect(getProps()).toMatchObject({ modelId: 'model-1', assetId: thumbnailId })
+		expect(getProps()).toMatchObject({ modelId: 'model-1', assetId: thumbnailId, defaultView })
 	})
 
 	it('keeps the model and thumbnail through undo and redo of an older change', () => {

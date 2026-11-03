@@ -5,6 +5,7 @@ import {
 	useCommentsSidebarOpen,
 } from '@tldraw/commenting'
 import {
+	MODEL3D_SOURCE_FORMATS,
 	PUBLISH_PREFIX,
 	READ_ONLY_LEGACY_PREFIX,
 	READ_ONLY_PREFIX,
@@ -23,11 +24,13 @@ import {
 	useEditor,
 	usePassThroughWheelEvents,
 	useTranslation,
+	useValue,
 } from 'tldraw'
 import { routes } from '../../../routeDefs'
 import { useMaybeApp } from '../../hooks/useAppState'
 import { useCurrentFileId } from '../../hooks/useCurrentFileId'
 import { useIsCommentingEnabled } from '../../hooks/useIsCommentingEnabled'
+import { model3dMessages } from '../../model3d/messages'
 import { useTldrawAppUiEvents } from '../../utils/app-ui-events'
 import { TlaSignInDialog } from '../dialogs/TlaSignInDialog'
 import { TlaCtaButton } from '../TlaCtaButton/TlaCtaButton'
@@ -94,6 +97,7 @@ export function TlaEditorTopRightPanel({
 	return (
 		<div ref={ref} className={styles.topRightPanel}>
 			<PeopleMenu />
+			{context === 'file' && <Model3dUploadButton />}
 			{/* Only file editors mount the comments sidebar (see CommentsOnCanvas); in legacy and
 			    published contexts the button would toggle state nothing reads. */}
 			{context !== 'legacy' && context !== 'published-file' && <CommentsSidebarButton />}
@@ -115,6 +119,39 @@ export function TlaEditorTopRightPanel({
 				</TlaFileShareMenu>
 			)}
 		</div>
+	)
+}
+
+function Model3dUploadButton() {
+	const editor = useEditor()
+	const inputRef = useRef<HTMLInputElement>(null)
+	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
+
+	if (isReadonly) return null
+
+	return (
+		<>
+			<input
+				ref={inputRef}
+				type="file"
+				accept={MODEL3D_SOURCE_FORMATS.map((format) => `.${format}`).join(',')}
+				multiple
+				hidden
+				onChange={(event) => {
+					const files = Array.from(event.currentTarget.files ?? [])
+					event.currentTarget.value = ''
+					if (files.length > 0) void editor.putExternalContent({ type: 'files', files })
+				}}
+			/>
+			<TlaCtaButton
+				canvas
+				secondary
+				data-testid="tla-upload-model-button"
+				onClick={() => inputRef.current?.click()}
+			>
+				<F {...model3dMessages.uploadModel} />
+			</TlaCtaButton>
+		</>
 	)
 }
 

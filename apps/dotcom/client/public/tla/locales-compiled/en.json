@@ -153,6 +153,12 @@
       "value": "File menu"
     }
   ],
+  "0baf24ce35": [
+    {
+      "type": 0,
+      "value": "Upload 3D"
+    }
+  ],
   "0c4383617a": [
     {
       "type": 0,
@@ -280,6 +286,12 @@
       "value": ". Create a free account to continue."
     }
   ],
+  "2448694676": [
+    {
+      "type": 0,
+      "value": "Drag to move · Scroll to zoom · Right-drag to pan"
+    }
+  ],
   "24946dcde3": [
     {
       "type": 0,
@@ -402,6 +414,12 @@
     {
       "type": 0,
       "value": "Remove member"
+    }
+  ],
+  "3a676daea5": [
+    {
+      "type": 0,
+      "value": "3D tools"
     }
   ],
   "3b54f37983": [
@@ -638,6 +656,12 @@
       "value": "Share"
     }
   ],
+  "5b39065595": [
+    {
+      "type": 0,
+      "value": "Default view saved. The canvas preview is updated."
+    }
+  ],
   "5bec508475": [
     {
       "type": 0,
@@ -797,6 +821,12 @@
       "value": "A new version of tldraw is available. Please reload the page to continue."
     }
   ],
+  "6691564330": [
+    {
+      "type": 0,
+      "value": "Default view"
+    }
+  ],
   "67ed6ddb7d": [
     {
       "type": 0,
@@ -861,6 +891,12 @@
     {
       "type": 0,
       "value": "Return to view"
+    }
+  ],
+  "710ff9907a": [
+    {
+      "type": 0,
+      "value": "Fit model"
     }
   ],
   "71a29b007b": [
@@ -1113,6 +1149,12 @@
     {
       "type": 0,
       "value": "Check your email for a verification code."
+    }
+  ],
+  "8d2de53685": [
+    {
+      "type": 0,
+      "value": "Rotate"
     }
   ],
   "8eb2c00e96": [
@@ -1415,6 +1457,12 @@
     {
       "type": 0,
       "value": "File limit reached"
+    }
+  ],
+  "abc92b8ac9": [
+    {
+      "type": 0,
+      "value": "Could not save the default view. Try again."
     }
   ],
   "acbb8a36e0": [
@@ -2098,6 +2146,12 @@
       "value": "This comment was deleted."
     }
   ],
+  "eedf6b8bfc": [
+    {
+      "type": 0,
+      "value": "Saving…"
+    }
+  ],
   "ef53538ae4": [
     {
       "type": 0,
@@ -2242,6 +2296,12 @@
     {
       "type": 0,
       "value": " to use it here."
+    }
+  ],
+  "f6d4a17b27": [
+    {
+      "type": 0,
+      "value": "Pan"
     }
   ],
   "fa2ead697d": [

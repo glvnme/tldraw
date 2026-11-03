@@ -3,6 +3,7 @@ import { defineMessages } from 'tldraw'
 
 export const model3dMessages = defineMessages({
 	model: { defaultMessage: '3D model' },
+	uploadModel: { defaultMessage: 'Upload 3D' },
 	uploading: { defaultMessage: 'Uploading' },
 	uploadFailed: { defaultMessage: 'Upload failed: {error}' },
 	uploadInterrupted: { defaultMessage: 'Upload interrupted. Drop the file again.' },
@@ -20,6 +21,15 @@ export const model3dMessages = defineMessages({
 	triangles: { defaultMessage: '{count, number} triangles' },
 	openIn3d: { defaultMessage: 'Open in 3D' },
 	close: { defaultMessage: 'Close' },
+	viewerTools: { defaultMessage: '3D tools' },
+	orbit: { defaultMessage: 'Rotate' },
+	pan: { defaultMessage: 'Pan' },
+	fit: { defaultMessage: 'Fit model' },
+	defaultView: { defaultMessage: 'Default view' },
+	savingDefault: { defaultMessage: 'Saving…' },
+	defaultViewSaved: { defaultMessage: 'Default view saved. The canvas preview is updated.' },
+	defaultViewFailed: { defaultMessage: 'Could not save the default view. Try again.' },
+	navigationHint: { defaultMessage: 'Drag to move · Scroll to zoom · Right-drag to pan' },
 	setDefaultView: { defaultMessage: 'Set as default view' },
 	stillUploading: { defaultMessage: 'The model is still uploading.' },
 	conversionFailedViewer: { defaultMessage: 'The model could not be converted.' },

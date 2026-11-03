@@ -103,6 +103,14 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 	const letterbox = useModel3dRevisionLetterbox(modelId)
 	const { addToast } = useToasts()
 	const [isSavingView, setIsSavingView] = useState(false)
+	const [isSavingDefault, setIsSavingDefault] = useState(false)
+	const [navigation, setNavigation] = useState<'orbit' | 'pan'>('orbit')
+	const rAbort = useRef<AbortController | null>(null)
+	const defaultView = useValue(
+		'default model view',
+		() => editor.getShape<TLModel3dShape>(shapeId)?.props.defaultView,
+		[editor, shapeId]
+	)
 
 	useEffect(() => {
 		const container = rContainer.current
@@ -110,6 +118,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 		// Aborted on close, on retry and on context loss; an aborted attempt never publishes anything.
 		const abort = new AbortController()
 		const { signal } = abort
+		rAbort.current = abort
 		let created: Model3dViewerEngine | null = null
 		let stopCameraSaves: (() => void) | null = null
 		setLoad({ kind: 'loading', progress: 0 })
@@ -126,7 +135,9 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 					container,
 					glbUrl: model3dUrl(model3dPaths.glb(modelId)),
 					token,
-					initialCamera: loadLastModel3dCamera(modelId, userId) ?? defaultView,
+					initialCamera: editor.getShape<TLModel3dShape>(shapeId)?.props.assetId
+						? (loadLastModel3dCamera(modelId, userId) ?? defaultView)
+						: defaultView,
 					signal,
 					onProgress: (loaded, total) => {
 						if (total && !signal.aborted) setLoad({ kind: 'loading', progress: loaded / total })
@@ -144,6 +155,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 				created = engine
 				stopCameraSaves = saveCameraChanges(engine, modelId, userId)
 				setEngine(engine)
+				setNavigation('orbit')
 				setLoad({ kind: 'ready' })
 				getModel3dViewerHandle(editor).set(engine)
 				await captureModel3dThumbnail(editor, shapeId, engine, signal).catch((e) => {
@@ -165,18 +177,21 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 		}
 	}, [editor, shapeId, modelId, isReady, attempt, getToken, userId])
 
-	const setDefaultView = () => {
-		if (!engine) return
-		const defaultView = engine.getCamera()
-		editor.run(
-			() =>
-				editor.updateShape<TLModel3dShape>({
-					id: shapeId,
-					type: MODEL3D_SHAPE_TYPE,
-					props: { defaultView },
-				}),
-			{ history: 'ignore', ignoreShapeLock: true }
-		)
+	const setDefaultView = async () => {
+		const signal = rAbort.current?.signal
+		if (!engine || !signal || isSavingDefault) return
+		setIsSavingDefault(true)
+		try {
+			await captureModel3dThumbnail(editor, shapeId, engine, signal, 'default')
+			addToast({ title: msg(messages.defaultViewSaved) })
+		} catch (e) {
+			if (!signal.aborted) {
+				console.error('Could not save the default view', e)
+				addToast({ severity: 'error', title: msg(messages.defaultViewFailed) })
+			}
+		} finally {
+			setIsSavingDefault(false)
+		}
 	}
 
 	const lockAndSketch = async () => {
@@ -225,16 +240,54 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 				</div>
 			) : null}
 			<div className={styles.viewerBar}>
-				{engine && !isReadonly && (
-					<button disabled={isSavingView} onClick={lockAndSketch}>
-						{msg(isSavingView ? revisionMessages.savingView : revisionMessages.lockAndSketch)}
-					</button>
-				)}
-				{engine && !isReadonly && (
-					<button onClick={setDefaultView}>{msg(messages.setDefaultView)}</button>
-				)}
 				<button onClick={() => closeModel3dViewer(editor)}>{msg(messages.close)}</button>
 			</div>
+			{engine && (
+				<div className={styles.viewerTools} role="group" aria-label={msg(messages.viewerTools)}>
+					<div className={styles.toolGroup}>
+						<button
+							aria-pressed={navigation === 'orbit'}
+							onClick={() => {
+								engine.setNavigation('orbit')
+								setNavigation('orbit')
+							}}
+						>
+							{msg(messages.orbit)}
+						</button>
+						<button
+							aria-pressed={navigation === 'pan'}
+							onClick={() => {
+								engine.setNavigation('pan')
+								setNavigation('pan')
+							}}
+						>
+							{msg(messages.pan)}
+						</button>
+						<button onClick={() => engine.fit()}>{msg(messages.fit)}</button>
+						<button
+							disabled={!defaultView}
+							onClick={() => defaultView && engine.setCamera(defaultView, { animate: true })}
+						>
+							{msg(messages.defaultView)}
+						</button>
+					</div>
+					{!isReadonly && (
+						<div className={styles.toolGroup}>
+							<button disabled={isSavingDefault || isSavingView} onClick={setDefaultView}>
+								{msg(isSavingDefault ? messages.savingDefault : messages.setDefaultView)}
+							</button>
+							<button
+								className={styles.primaryTool}
+								disabled={isSavingView || isSavingDefault}
+								onClick={lockAndSketch}
+							>
+								{msg(isSavingView ? revisionMessages.savingView : revisionMessages.lockAndSketch)}
+							</button>
+						</div>
+					)}
+					<span className={styles.viewerHint}>{msg(messages.navigationHint)}</span>
+				</div>
+			)}
 		</>
 	)
 }

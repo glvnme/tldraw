@@ -69,7 +69,7 @@
 
 .list {
 	position: absolute;
-	bottom: 12px;
+	bottom: 152px;
 	left: 12px;
 	display: flex;
 	flex-direction: column;
@@ -134,7 +134,7 @@
 
 .returnToView {
 	position: absolute;
-	bottom: 16px;
+	bottom: 116px;
 	left: 50%;
 	transform: translateX(-50%);
 }

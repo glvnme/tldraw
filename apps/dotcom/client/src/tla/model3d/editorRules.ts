@@ -9,7 +9,7 @@ import { cancelModel3dUpload } from './upload'
 // Assigned outside history after creation, so undo and redo replay records from before they
 // were set. Once set, an empty value can only come from such a stale record.
 const ASSIGNED_PROPS: Record<string, readonly string[]> = {
-	[MODEL3D_SHAPE_TYPE]: ['modelId', 'assetId'],
+	[MODEL3D_SHAPE_TYPE]: ['modelId', 'assetId', 'defaultView'],
 	[MODEL3D_REVISION_SHAPE_TYPE]: ['assetId'],
 }
 

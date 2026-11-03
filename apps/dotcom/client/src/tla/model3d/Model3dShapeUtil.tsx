@@ -5,7 +5,7 @@ import {
 	model3dShapeMigrations,
 	model3dShapeProps,
 } from '@tldraw/dotcom-shared'
-import { PointerEventHandler, ReactNode, useCallback, useState } from 'react'
+import { PointerEventHandler, ReactNode, useCallback, useEffect, useState } from 'react'
 import {
 	BaseBoxShapeUtil,
 	FileHelpers,
@@ -20,6 +20,7 @@ import {
 } from 'tldraw'
 import { model3dErrorMessages, model3dMessages as messages } from './messages'
 import { useModel3dStatus, model3dStatusPoller } from './status'
+import { prepareModel3dThumbnail } from './thumbnail'
 import { model3dLocalUploads, requeueModel3d, retryModel3dUpload } from './upload'
 import { useModel3dGetToken } from './useModel3dGetToken'
 import { openModel3dViewer } from './viewerState'
@@ -99,7 +100,7 @@ export class Model3dShapeUtil extends BaseBoxShapeUtil<TLModel3dShape> {
 				href={src}
 				width={shape.props.w}
 				height={shape.props.h}
-				preserveAspectRatio="xMidYMid slice"
+				preserveAspectRatio="xMidYMid meet"
 			/>
 		)
 	}
@@ -116,6 +117,12 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	const msg = useTranslation()
 	const getToken = useModel3dGetToken()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
+	const showControls = useValue(
+		'model controls',
+		() =>
+			editor.getHoveredShapeId() === shape.id || editor.getSelectedShapeIds().includes(shape.id),
+		[editor, shape.id]
+	)
 	const { modelId, altText } = shape.props
 	const localUpload = useValue('model3d upload', () => model3dLocalUploads.get().get(shape.id), [
 		shape.id,
@@ -132,6 +139,16 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		assetId: shape.props.assetId,
 		width: shape.props.w,
 	})
+
+	const ready = snapshot.kind === 'ok' && snapshot.status.status === 'ready'
+	useEffect(() => {
+		if (!ready || shape.props.assetId || isReadonly) return
+		const abort = new AbortController()
+		void prepareModel3dThumbnail(editor, shape.id, getToken, abort.signal).catch((error) => {
+			if (!abort.signal.aborted) console.error('Could not prepare the model preview', error)
+		})
+		return () => abort.abort()
+	}, [editor, shape.id, shape.props.modelId, shape.props.assetId, ready, isReadonly, getToken])
 
 	const [retryError, setRetryError] = useState<string | null>(null)
 	const retryConversion = useCallback(async () => {
@@ -233,7 +250,8 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 
 	const isReady = status?.status === 'ready'
 	return (
-		<Card name={thumbnailUrl ? null : name}>
+		<div className={styles.model} data-active={showControls}>
+			{!thumbnailUrl && <div className={styles.name}>{name}</div>}
 			{thumbnailUrl ? (
 				<img className={styles.thumbnail} src={thumbnailUrl} alt={altText} draggable={false} />
 			) : status?.manifest ? (
@@ -247,7 +265,7 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 					onPlay={() => openModel3dViewer(editor, shape.id)}
 				/>
 			)}
-		</Card>
+		</div>
 	)
 }
 

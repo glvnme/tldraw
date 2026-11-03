@@ -1,12 +1,13 @@
 import type { Model3dCamera, ViewerHandle } from '@tldraw/dotcom-shared'
 import {
 	Box3,
-	Color,
 	DirectionalLight,
 	HemisphereLight,
 	LoadingManager,
 	MathUtils,
 	Mesh,
+	MOUSE,
+	TOUCH,
 	Object3D,
 	OrthographicCamera,
 	PerspectiveCamera,
@@ -24,6 +25,8 @@ import { fetch } from 'tldraw'
 // Loaded only through dynamic `import()` from Model3dViewer.tsx so three.js stays out of the main bundle.
 
 export interface Model3dViewerEngine extends ViewerHandle {
+	fit(): void
+	setNavigation(mode: 'orbit' | 'pan'): void
 	dispose(): void
 }
 
@@ -48,6 +51,7 @@ export async function createModel3dViewerEngine(
 	const renderer = new WebGLRenderer({
 		powerPreference: 'high-performance',
 		antialias: true,
+		alpha: true,
 		reversedDepthBuffer: true,
 	})
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -58,7 +62,6 @@ export async function createModel3dViewerEngine(
 	container.appendChild(canvas)
 
 	const scene = new Scene()
-	scene.background = new Color(0xeceef1)
 	const initialCamera = new PerspectiveCamera(50, 1, 0.01, 1000)
 	let camera: PerspectiveCamera | OrthographicCamera = initialCamera
 	let aspect = 1
@@ -74,6 +77,7 @@ export async function createModel3dViewerEngine(
 	let paused = false
 	let frame = 0
 	let animation = 0
+	let navigation: 'orbit' | 'pan' = 'orbit'
 	const listeners = new Set<(camera: Model3dCamera) => void>()
 
 	const renderNow = () => {
@@ -112,6 +116,8 @@ export async function createModel3dViewerEngine(
 	const createControls = () => {
 		const next = new OrbitControls(camera, canvas)
 		next.enableDamping = false
+		next.mouseButtons.LEFT = navigation === 'pan' ? MOUSE.PAN : MOUSE.ROTATE
+		next.touches.ONE = navigation === 'pan' ? TOUCH.PAN : TOUCH.ROTATE
 		next.addEventListener('start', () => cancelAnimationFrame(animation))
 		next.addEventListener('change', () => {
 			requestRender()
@@ -244,24 +250,37 @@ export async function createModel3dViewerEngine(
 	}
 	renderNow()
 
+	const captureFrame = () =>
+		new Promise<Awaited<ReturnType<ViewerHandle['captureFrame']>>>((resolve, reject) => {
+			const isLost = () => disposed || renderer.getContext().isContextLost()
+			if (isLost()) return reject(new Error('The 3D view is not available'))
+			// Read pixels in the same task as rendering; the drawing buffer is not preserved.
+			renderNow()
+			const width = canvas.width
+			const height = canvas.height
+			canvas.toBlob((blob) => {
+				if (!blob || isLost()) return reject(new Error('Could not capture the 3D view'))
+				resolve({ blob, width, height, dpr: renderer.getPixelRatio() })
+			}, 'image/png')
+		})
+
 	return {
-		captureFrame() {
-			return new Promise((resolve, reject) => {
-				// A lost context draws nothing, so its frame would be blank.
-				const isLost = () => disposed || renderer.getContext().isContextLost()
-				if (isLost()) return reject(new Error('The 3D view is not available'))
-				// Without preserveDrawingBuffer the frame is only readable in the task that drew it.
-				renderNow()
-				canvas.toBlob((blob) => {
-					if (!blob || isLost()) return reject(new Error('Could not capture the 3D view'))
-					resolve({
-						blob,
-						width: canvas.width,
-						height: canvas.height,
-						dpr: renderer.getPixelRatio(),
-					})
-				}, 'image/png')
-			})
+		captureFrame,
+		fit() {
+			cancelAnimationFrame(animation)
+			setProjection('perspective')
+			camera.up.set(0, 1, 0)
+			rebuildControls()
+			updateProjection()
+			fitCamera(camera as PerspectiveCamera, controls.target, sphere.center, radius)
+			controls.update()
+			requestRender()
+			emitCameraChange()
+		},
+		setNavigation(mode) {
+			navigation = mode
+			controls.mouseButtons.LEFT = mode === 'pan' ? MOUSE.PAN : MOUSE.ROTATE
+			controls.touches.ONE = mode === 'pan' ? TOUCH.PAN : TOUCH.ROTATE
 		},
 		getCamera,
 		setCamera(value, { animate = false } = {}) {
