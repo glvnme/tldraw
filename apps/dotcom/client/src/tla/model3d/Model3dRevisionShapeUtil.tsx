@@ -4,7 +4,6 @@ import {
 	model3dRevisionShapeMigrations,
 	model3dRevisionShapeProps,
 } from '@tldraw/dotcom-shared'
-import classNames from 'classnames'
 import { PointerEvent, ReactNode, useEffect, useState } from 'react'
 import {
 	BaseFrameLikeShapeUtil,
@@ -135,7 +134,7 @@ export class Model3dRevisionShapeUtil extends BaseFrameLikeShapeUtil<TLModel3dRe
 		return (
 			<>
 				{src && <image href={src} width={w} height={h} preserveAspectRatio="none" />}
-				<rect width={w} height={h} fill="none" stroke="#d0d3d9" strokeWidth={1} />
+				<rect width={w} height={h} fill="none" stroke="#d0d3d9" strokeWidth={1} opacity={0.6} />
 			</>
 		)
 	}
@@ -185,15 +184,10 @@ export function Model3dRevisionBadge({
 	isEdited: boolean
 }) {
 	const msg = useTranslation()
-	const isPublished = shape.props.publishedAt !== null
+	const status = isEdited ? 'edited' : shape.props.publishedAt !== null ? 'published' : 'draft'
 	return (
-		<span
-			className={classNames(
-				styles.badge,
-				isEdited ? styles.badgeEdited : isPublished ? styles.badgePublished : styles.badgeDraft
-			)}
-		>
-			{msg(isEdited ? messages.edited : isPublished ? messages.published : messages.draft)}
+		<span className={styles.badge} data-status={status}>
+			{msg(messages[status])}
 		</span>
 	)
 }

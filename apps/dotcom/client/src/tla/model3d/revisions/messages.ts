@@ -5,7 +5,6 @@ export const revisionMessages = defineMessages({
 	publish: { defaultMessage: 'Publish' },
 	backTo3d: { defaultMessage: 'Back to 3D' },
 	discard: { defaultMessage: 'Discard' },
-	sketching: { defaultMessage: 'Sketching {name}' },
 	views: { defaultMessage: 'Views' },
 	draft: { defaultMessage: 'Draft' },
 	published: { defaultMessage: 'Published' },

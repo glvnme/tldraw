@@ -1,5 +1,16 @@
 import { useEffect } from 'react'
-import { EditorPortal, react, useEditor, useTranslation, useValue } from 'tldraw'
+import {
+	EditorPortal,
+	TldrawUiButton,
+	TldrawUiButtonIcon,
+	TldrawUiButtonLabel,
+	TldrawUiToolbar,
+	TldrawUiToolbarButton,
+	react,
+	useEditor,
+	useTranslation,
+	useValue,
+} from 'tldraw'
 import { revisionMessages as messages } from '../revisions/messages'
 import { getModel3dRevision } from '../revisions/state'
 import { closeModel3dViewer, getModel3dViewerState } from '../viewerState'
@@ -86,12 +97,26 @@ function Model3dSketchBar() {
 	return (
 		<EditorPortal>
 			<div className={styles.sketchBar}>
-				<span className={styles.sketchName}>{msg(messages.sketching, { name })}</span>
-				<button className={styles.primary} onClick={() => publishModel3dSketch(editor)}>
-					{msg(messages.publish)}
-				</button>
-				<button onClick={() => exitModel3dSketch(editor)}>{msg(messages.backTo3d)}</button>
-				<button onClick={() => discardModel3dSketch(editor)}>{msg(messages.discard)}</button>
+				<TldrawUiToolbar label={name} tooltipSide="bottom">
+					<TldrawUiToolbarButton
+						type="icon"
+						title={msg(messages.backTo3d)}
+						onClick={() => exitModel3dSketch(editor)}
+					>
+						<TldrawUiButtonIcon icon="arrow-left" small />
+					</TldrawUiToolbarButton>
+					<span className={styles.sketchName}>{name}</span>
+					<TldrawUiToolbarButton
+						type="icon"
+						title={msg(messages.discard)}
+						onClick={() => discardModel3dSketch(editor)}
+					>
+						<TldrawUiButtonIcon icon="trash" small />
+					</TldrawUiToolbarButton>
+					<TldrawUiButton type="primary" onClick={() => publishModel3dSketch(editor)}>
+						<TldrawUiButtonLabel>{msg(messages.publish)}</TldrawUiButtonLabel>
+					</TldrawUiButton>
+				</TldrawUiToolbar>
 			</div>
 		</EditorPortal>
 	)
