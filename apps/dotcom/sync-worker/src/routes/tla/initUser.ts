@@ -12,7 +12,9 @@ import { isRateLimited } from '../../utils/rateLimit'
 import {
 	getBearerToken,
 	getClerkClient,
+	isLocalDevAuth,
 	isOAuthAccessToken,
+	LOCAL_DEV_USER,
 	requireAuth,
 	verifyOAuthAccessToken,
 } from '../../utils/tla/getAuth'
@@ -123,12 +125,20 @@ export async function ensureUser(
 
 	// Callers authenticate first, but a user deleted in Clerk since their token was issued would
 	// otherwise throw here and 500 instead of being refused.
-	const clerkUser = await getClerkClient(env)
-		.users.getUser(id)
-		.catch((e) => {
-			if (isClerkAPIResponseError(e) && e.status === 404) return null
-			throw e
-		})
+	const clerkUser = isLocalDevAuth(env)
+		? // The fields read below, for the one user local dev auth admits.
+			{
+				fullName: LOCAL_DEV_USER.name,
+				imageUrl: '',
+				primaryEmailAddress: { emailAddress: LOCAL_DEV_USER.email },
+				emailAddresses: [],
+			}
+		: await getClerkClient(env)
+				.users.getUser(id)
+				.catch((e) => {
+					if (isClerkAPIResponseError(e) && e.status === 404) return null
+					throw e
+				})
 	if (!clerkUser) return { outcome: 'no_clerk_user' }
 
 	// A Clerk user can lack an email (e.g. some SSO/social flows); reading [0].emailAddress on

@@ -5,11 +5,17 @@
   "00b177e080": {
     "translation": "Accept invitation"
   },
+  "00dc5a8b2f": {
+    "translation": "Set as default view"
+  },
   "029f235f01": {
     "translation": "We’re working on support for files from <a><strong>{appName}</strong></a>."
   },
   "043973ec1f": {
     "translation": "Still having trouble? {GetHelpLink}"
+  },
+  "048deed4ab": {
+    "translation": "The model file is missing."
   },
   "04a2dd56d6": {
     "translation": "Invite teammates"
@@ -44,6 +50,9 @@
   "0b9a4cde72": {
     "translation": "File menu"
   },
+  "0baf24ce35": {
+    "translation": "Upload 3D"
+  },
   "0c4383617a": {
     "translation": "Something went wrong loading this invite. Please try again."
   },
@@ -59,17 +68,32 @@
   "110a4b01be": {
     "translation": "Publish"
   },
+  "123eb0f02e": {
+    "translation": "Back to 3D"
+  },
   "12a6766ba1": {
     "translation": "Unpin file"
   },
   "13ddd375ad": {
     "translation": "Export as"
   },
+  "14a099002a": {
+    "translation": "The model changed during the conversion."
+  },
   "14b03eeeb5": {
     "translation": "Notification options"
   },
+  "16bfbf9c46": {
+    "translation": "Loading"
+  },
+  "17d440bf27": {
+    "translation": "Reset view"
+  },
   "181b90f889": {
     "translation": "Create file"
+  },
+  "19af319f85": {
+    "translation": "Optimizing"
   },
   "1da2e8106b": {
     "translation": "An unexpected error occurred."
@@ -80,11 +104,17 @@
   "1ffd709937": {
     "translation": "A workspace must keep at least one owner. Make someone else an owner first."
   },
+  "20a32311cd": {
+    "translation": "Loading {percent, number, percent}"
+  },
   "21f66c9c00": {
     "translation": "Workspace name"
   },
   "23dcace54a": {
     "translation": "You have been invited to join <strong>{workspaceName}</strong>. Create a free account to continue."
+  },
+  "24946dcde3": {
+    "translation": "The model is still uploading."
   },
   "250ddea65c": {
     "translation": "About tldraw"
@@ -106,6 +136,9 @@
   },
   "2d3cdcfdd4": {
     "translation": "Please try again."
+  },
+  "2dbd2cf93c": {
+    "translation": "Open in 3D"
   },
   "2de510be71": {
     "translation": "Regenerating replaces the current invite link with a new one. Anyone using the old link will need the new one to join."
@@ -137,11 +170,17 @@
   "375396d6e5": {
     "translation": "Remove member"
   },
+  "3b54f37983": {
+    "translation": "The 3D view stopped working."
+  },
   "3bc7d6ea2f": {
     "translation": "Continue with email"
   },
   "3bd1b98dbd": {
     "translation": "Unable to publish the changes."
+  },
+  "3bea891567": {
+    "translation": "Move this board into a workspace to add models."
   },
   "3c5e891bff": {
     "translation": "Pinned"
@@ -151,6 +190,9 @@
   },
   "3e2ae04ff0": {
     "translation": "Unsupported Mermaid diagram"
+  },
+  "3f1c5b0049": {
+    "translation": "Uploading"
   },
   "402bf0c47e": {
     "translation": "Color theme"
@@ -184,6 +226,12 @@
   },
   "4d1c8263ba": {
     "translation": "Reload"
+  },
+  "4d783c1889": {
+    "translation": "Republish"
+  },
+  "4e11db406c": {
+    "translation": "Saving"
   },
   "5097d89907": {
     "translation": "Unsupported diagram, will generate SVG instead"
@@ -242,6 +290,9 @@
   "5d26ae7550": {
     "translation": "We failed to upload some of the content you created before you signed in."
   },
+  "5e473d3987": {
+    "translation": "You don’t have access to this model."
+  },
   "5f3c333678": {
     "translation": "Feedback submitted"
   },
@@ -257,11 +308,17 @@
   "61057a0c84": {
     "translation": "Later"
   },
+  "61760c0cdc": {
+    "translation": "Something went wrong while converting."
+  },
   "61fb03fd7b": {
     "translation": "{count, plural, one {Someone reacted to your comment} other {# people reacted to your comment}}"
   },
   "625fd29749": {
     "translation": "Older"
+  },
+  "6327b4e59f": {
+    "translation": "Retry"
   },
   "639bae9ac6": {
     "translation": "you"
@@ -269,11 +326,17 @@
   "63a6a88c06": {
     "translation": "Refresh"
   },
+  "649900e4b4": {
+    "translation": "The converter rejected the request."
+  },
   "6609dd239e": {
     "translation": "Something went wrong"
   },
   "6637a98151": {
     "translation": "A new version of tldraw is available. Please reload the page to continue."
+  },
+  "67ed6ddb7d": {
+    "translation": "Edited"
   },
   "681e10aecb": {
     "translation": "New file"
@@ -287,6 +350,12 @@
   "6a26f54883": {
     "translation": "Help"
   },
+  "6b192cb554": {
+    "translation": "Upload interrupted"
+  },
+  "6bc9ee7c6b": {
+    "translation": "3D model"
+  },
   "6dc0836c1b": {
     "translation": "You do not have the necessary permissions to perform this action."
   },
@@ -295,6 +364,9 @@
   },
   "70a6facb9d": {
     "translation": "This week"
+  },
+  "70df67b7f8": {
+    "translation": "Return to view"
   },
   "71a29b007b": {
     "translation": "Have a bug, issue, or idea for tldraw? Let us know!"
@@ -323,6 +395,9 @@
   "764671e008": {
     "translation": "Chat with us on Discord"
   },
+  "7650a76b0e": {
+    "translation": "The conversion took too long."
+  },
   "7697920637": {
     "translation": "Please reload"
   },
@@ -349,6 +424,9 @@
   },
   "7c0747a5df": {
     "translation": "Open tldraw"
+  },
+  "7c4824e84e": {
+    "translation": "Draco-compressed GLB is not supported. Export it without Draco."
   },
   "7cb5f8b4a5": {
     "translation": "Forget"
@@ -389,6 +467,9 @@
   "88bf6ab42c": {
     "translation": "This invite link has expired"
   },
+  "8c28a1692b": {
+    "translation": "Model not found"
+  },
   "8c2d3d730c": {
     "translation": "Check your email for a verification code."
   },
@@ -427,6 +508,9 @@
   },
   "9b33f5c63c": {
     "translation": "Didn’t receive a code? <resend>Resend</resend>."
+  },
+  "9b9d8a976b": {
+    "translation": "Published"
   },
   "9bef626805": {
     "translation": "Delete file"
@@ -470,6 +554,9 @@
   "a274f4d467": {
     "translation": "Notifications"
   },
+  "a38a6b59c7": {
+    "translation": "3D models need a workspace"
+  },
   "a3debabee7": {
     "translation": "Cookie policy"
   },
@@ -497,8 +584,14 @@
   "aaec8f7cde": {
     "translation": "Someone"
   },
+  "aaf52153ae": {
+    "translation": "The conversion was not authorized."
+  },
   "ab0df9ba36": {
     "translation": "File limit reached"
+  },
+  "abc92b8ac9": {
+    "translation": "Could not save the default view. Try again."
   },
   "af3dc88931": {
     "notes": "This is used to show the last time the file was published. An example is 'Last published 5 minutes ago'.",
@@ -525,6 +618,15 @@
   "b48becc771": {
     "translation": "Enable invites"
   },
+  "b49317394d": {
+    "translation": "You are signed out."
+  },
+  "b52fdae8ba": {
+    "translation": "Something went wrong on the server."
+  },
+  "b5ae502a34": {
+    "translation": "Could not load the model: {error}"
+  },
   "b6d4223e60": {
     "translation": "Sign in"
   },
@@ -537,6 +639,9 @@
   "b758336699": {
     "translation": "Copy link"
   },
+  "b8d0eb5b8b": {
+    "translation": "Conversion failed"
+  },
   "ba0318cb81": {
     "translation": "Sign in to share"
   },
@@ -548,6 +653,12 @@
   },
   "bc88b0e89e": {
     "translation": "Shared by {ownerName}"
+  },
+  "bcbf28e9a7": {
+    "translation": "Can’t add {name}"
+  },
+  "bd9defeeff": {
+    "translation": "Models must be 1 GB or smaller."
   },
   "c17466812d": {
     "translation": "Manage workspace"
@@ -591,6 +702,9 @@
   "d0e3556476": {
     "translation": "<name>{author}</name> and {count, plural, one {# other} other {# others}} reacted to your comment"
   },
+  "d1165620af": {
+    "translation": "Lock view and sketch"
+  },
   "d3d2e61733": {
     "translation": "Close"
   },
@@ -615,11 +729,26 @@
   "d9100f3e10": {
     "translation": "Go here to see the content"
   },
+  "d94b42030b": {
+    "translation": "Discard"
+  },
   "dbbebf3c03": {
     "translation": "Invite only"
   },
   "dbf9b24193": {
     "translation": "Leave workspace"
+  },
+  "de9af1da1a": {
+    "translation": "This file format is not supported."
+  },
+  "debdfc8c88": {
+    "translation": "The model is too large to convert."
+  },
+  "defc490d7b": {
+    "translation": "Retry failed: {error}"
+  },
+  "df7ef33b8d": {
+    "translation": "Waiting to convert"
   },
   "dfdb78a4e4": {
     "translation": "App debug flags"
@@ -636,14 +765,29 @@
   "e404559826": {
     "translation": "Terms of service"
   },
+  "e4f9c3677f": {
+    "translation": "Default view saved"
+  },
   "e65b2dcb6f": {
     "translation": "<name>{a}</name> and <name>{b}</name> reacted to your comment"
   },
   "e81c4e4f2b": {
     "translation": "or"
   },
+  "e93aa9da61": {
+    "translation": "3D view"
+  },
+  "e958534988": {
+    "translation": "The converter is not running."
+  },
+  "ea0f3fa522": {
+    "translation": "The model could not be converted."
+  },
   "ea4788705e": {
     "translation": "Cancel"
+  },
+  "eab7fe1e2a": {
+    "translation": "Could not save the view"
   },
   "eb1e2b0542": {
     "translation": "Ask the workspace owner for a new one."
@@ -656,6 +800,9 @@
   },
   "ec611e9a08": {
     "translation": "Account menu"
+  },
+  "ed4832a84e": {
+    "translation": "Views"
   },
   "ed75712b0e": {
     "translation": "Duplicate"
@@ -672,8 +819,14 @@
   "ef7de3f485": {
     "translation": "selected"
   },
+  "f03ab16cd5": {
+    "translation": "Draft"
+  },
   "f09b16bc5f": {
     "translation": "We use cookies to keep you logged in, to sync your files, and to collect analytics to help us improve tldraw."
+  },
+  "f09bc49e98": {
+    "translation": "The file is empty."
   },
   "f0e8bff6f9": {
     "translation": "User settings"
@@ -693,6 +846,12 @@
   "f5ddc8d9c1": {
     "translation": "For now, you can <a>export as a {extension} file</a> to use it here."
   },
+  "f61cd880f1": {
+    "translation": "Reading the model"
+  },
+  "f88d81f30c": {
+    "translation": "Converting"
+  },
   "fa2ead697d": {
     "translation": "Privacy Policy"
   },
@@ -701,6 +860,15 @@
   },
   "fc9d47046b": {
     "translation": "Are you sure you want to leave this workspace?"
+  },
+  "fd5f103140": {
+    "translation": "The upload did not finish."
+  },
+  "fde5639174": {
+    "translation": "Preparing the model…"
+  },
+  "fe43b0c148": {
+    "translation": "Preparing preview"
   },
   "fed5ec05eb": {
     "translation": "Copied link"

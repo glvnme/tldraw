@@ -13,6 +13,10 @@ import { routes } from '../../../routeDefs'
 import { useHandleUiEvents } from '../../../utils/analytics'
 import { TldrawApp } from '../../app/TldrawApp'
 import { useMaybeApp } from '../../hooks/useAppState'
+import { getSelectedModel3dShape } from '../../model3d/actions'
+import { model3dMessages } from '../../model3d/messages'
+import { overrideModel3dRevisionExports } from '../../model3d/revisions/export'
+import { openModel3dViewer } from '../../model3d/viewerState'
 import { editorMessages as messages } from './editor-messages'
 import { useRoomInfo } from './TlaEditorTopRightPanel'
 
@@ -68,7 +72,7 @@ export function useFileEditorOverrides({ fileSlug }: { fileSlug?: string }) {
 					'people-menu.anonymous-user': intl.formatMessage(messages.anonymousUser),
 				},
 			},
-			actions(editor, actions) {
+			actions(editor, actions, helpers) {
 				// Add a shortcut that does nothing but blocks the command+s shortcut
 				actions['save-null'] = {
 					id: 'save-null',
@@ -114,10 +118,22 @@ export function useFileEditorOverrides({ fileSlug }: { fileSlug?: string }) {
 					},
 				}
 
+				actions['open-in-3d'] = {
+					id: 'open-in-3d',
+					label: msg(model3dMessages.openIn3d),
+					readonlyOk: true,
+					isEnabled: (editor) => getSelectedModel3dShape(editor) !== null,
+					onSelect() {
+						const shape = getSelectedModel3dShape(editor)
+						if (shape) openModel3dViewer(editor, shape.id)
+					},
+				}
+				overrideModel3dRevisionExports(editor, actions, helpers)
+
 				return actions
 			},
 		}
-	}, [app, copySource, fileSlug, untitledProject, intl, navigate, trackEvent])
+	}, [app, copySource, fileSlug, untitledProject, intl, msg, navigate, trackEvent])
 
 	return overrides
 }

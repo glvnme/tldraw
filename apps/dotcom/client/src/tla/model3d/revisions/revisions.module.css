@@ -1,0 +1,160 @@
+/* Canvas shape: a hairline frame around the snapshot, like a tldraw frame. */
+
+.revision {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	outline: 1px solid var(--tl-color-muted-1);
+}
+
+.revisionImage {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	user-select: none;
+	pointer-events: none;
+}
+
+.heading {
+	position: absolute;
+	bottom: 100%;
+	left: 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+	padding-bottom: 4px;
+	transform-origin: bottom left;
+	color: var(--tl-color-text-3);
+	font: 12px/1.3 var(--tl-font-sans);
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.headingName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.badge {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 4px;
+	color: var(--tl-color-text-3);
+	font-size: 11px;
+}
+
+.badge::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--tl-color-muted-1);
+}
+
+.badge[data-status='published']::before {
+	background: var(--tl-color-selected);
+}
+
+.badge[data-status='edited']::before {
+	background: var(--tl-color-warning);
+}
+
+.headingButton {
+	padding: 0 4px;
+	border: none;
+	border-radius: var(--tl-radius-1);
+	background: none;
+	color: var(--tl-color-selected);
+	font: inherit;
+	font-size: 11px;
+	cursor: pointer;
+	pointer-events: all;
+}
+
+.headingButton:hover {
+	background: var(--tl-color-muted-2);
+}
+
+/* Viewer */
+
+.letterbox {
+	position: absolute;
+	/* Darkens the bars around the letterboxed view. */
+	box-shadow: 0 0 0 100vmax var(--tl-color-overlay);
+	pointer-events: none;
+}
+
+.overlay {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* Opens above the island's views button. */
+.list {
+	position: absolute;
+	bottom: 68px;
+	left: 50%;
+	display: flex;
+	flex-direction: column;
+	min-width: 200px;
+	max-height: 50%;
+	padding: 4px;
+	overflow-y: auto;
+	transform: translateX(-50%);
+	border-radius: var(--tl-radius-3);
+	background: var(--tl-color-panel);
+	box-shadow: var(--tl-shadow-3);
+}
+
+.list :global(.tlui-button__menu) {
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.list :global(.tlui-button__menu[data-isactive='true']) {
+	background: var(--tl-color-muted-2);
+}
+
+.returnToView {
+	position: absolute;
+	top: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	border-radius: var(--tl-radius-3);
+	background: var(--tl-color-panel);
+	box-shadow: var(--tl-shadow-2);
+}
+
+/* Sketch mode */
+
+.sketchBar {
+	position: absolute;
+	top: 8px;
+	left: 50%;
+	/* Above tldraw's panels, like the viewer, below its menus. */
+	z-index: 350;
+	transform: translateX(-50%);
+	border-radius: var(--tl-radius-4);
+	background: var(--tl-color-panel);
+	box-shadow: var(--tl-shadow-2);
+	pointer-events: all;
+}
+
+.sketchBar > :global(.tlui-toolbar) {
+	align-items: center;
+	padding: 0 4px 0 0;
+}
+
+.sketchName {
+	max-width: 200px;
+	padding: 0 4px;
+	overflow: hidden;
+	color: var(--tl-color-text-1);
+	font: 12px/1.2 var(--tl-font-sans);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

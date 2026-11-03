@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/scenario-test'
 
-const ROOT_URL = 'http://localhost:3000'
+const ROOT_URL = 'http://localhost:25497'
 
 test.describe.configure({ mode: 'serial' })
 

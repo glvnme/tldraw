@@ -46,6 +46,6 @@ export class ImportHelper {
 
 	@step
 	async navigate(url = IMPORT_URL) {
-		await this.page.goto(`http://localhost:3000/import?url=${encodeURIComponent(url)}`)
+		await this.page.goto(`http://localhost:25497/import?url=${encodeURIComponent(url)}`)
 	}
 }

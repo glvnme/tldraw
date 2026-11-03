@@ -13,7 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 //
 // This talks to a real postgres (the triggers are plpgsql, so fakes can't exercise
 // them). It is opt-in: set ZERO_CACHE_TEST_POSTGRES_URL (local dev stack:
-// postgres://user:password@localhost:6543/postgres) to run it. Without a connection
+// postgres://user:password@localhost:25508/postgres) to run it. Without a connection
 // string the suite is skipped so CI stays green.
 //
 // Isolation differs from stamp_comment_created_at.test.ts / delete_file_states.test.ts:

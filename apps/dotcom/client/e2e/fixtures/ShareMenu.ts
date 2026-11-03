@@ -122,7 +122,7 @@ export class ShareMenu {
 			expect(url).not.toBe(sentinel)
 			expect(url).toBeTruthy()
 			const parsed = new URL(url)
-			expect(parsed.origin).toBe('http://localhost:3000')
+			expect(parsed.origin).toBe('http://localhost:25497')
 			// Share menu links should point to file/publish routes, not group invite routes.
 			expect(parsed.pathname.startsWith('/f/') || parsed.pathname.startsWith('/p/')).toBe(true)
 		}).toPass({ timeout: 5000 })

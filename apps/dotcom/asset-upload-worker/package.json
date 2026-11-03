@@ -9,7 +9,7 @@
 	},
 	"main": "src/index.ts",
 	"scripts": {
-		"dev": "pnpm exec tsx ../../../internal/scripts/workers/dev.ts --persist-to tmp-assets --inspector-port 9449",
+		"dev": "pnpm exec tsx ../../../internal/scripts/workers/dev.ts --persist-to tmp-assets --inspector-port 25512",
 		"test-ci": "pnpm exec vitest run --passWithNoTests",
 		"test": "pnpm exec vitest --passWithNoTests",
 		"test-coverage": "pnpm exec vitest run --coverage --passWithNoTests",

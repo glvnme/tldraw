@@ -23,11 +23,14 @@ import {
 	useEditor,
 	usePassThroughWheelEvents,
 	useTranslation,
+	useValue,
 } from 'tldraw'
 import { routes } from '../../../routeDefs'
 import { useMaybeApp } from '../../hooks/useAppState'
 import { useCurrentFileId } from '../../hooks/useCurrentFileId'
 import { useIsCommentingEnabled } from '../../hooks/useIsCommentingEnabled'
+import { pickModel3dFiles, useAddModel3dFiles } from '../../model3d/drop'
+import { model3dMessages } from '../../model3d/messages'
 import { useTldrawAppUiEvents } from '../../utils/app-ui-events'
 import { TlaSignInDialog } from '../dialogs/TlaSignInDialog'
 import { TlaCtaButton } from '../TlaCtaButton/TlaCtaButton'
@@ -94,6 +97,7 @@ export function TlaEditorTopRightPanel({
 	return (
 		<div ref={ref} className={styles.topRightPanel}>
 			<PeopleMenu />
+			{context === 'file' && <Model3dUploadButton />}
 			{/* Only file editors mount the comments sidebar (see CommentsOnCanvas); in legacy and
 			    published contexts the button would toggle state nothing reads. */}
 			{context !== 'legacy' && context !== 'published-file' && <CommentsSidebarButton />}
@@ -115,6 +119,28 @@ export function TlaEditorTopRightPanel({
 				</TlaFileShareMenu>
 			)}
 		</div>
+	)
+}
+
+function Model3dUploadButton() {
+	const editor = useEditor()
+	const addModel3dFiles = useAddModel3dFiles()
+	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
+
+	if (isReadonly) return null
+
+	return (
+		<TlaCtaButton
+			canvas
+			secondary
+			data-testid="tla-upload-model-button"
+			onClick={async () => {
+				const files = await pickModel3dFiles(editor.getContainerDocument())
+				if (files.length > 0) addModel3dFiles(files)
+			}}
+		>
+			<F {...model3dMessages.uploadModel} />
+		</TlaCtaButton>
 	)
 }
 

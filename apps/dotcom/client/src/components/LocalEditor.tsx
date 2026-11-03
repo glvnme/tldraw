@@ -7,6 +7,7 @@ import { useFileEditorOverrides } from '../tla/components/TlaEditor/useFileEdito
 import { useHandleUiEvents } from '../utils/analytics'
 import { assetUrls } from '../utils/assetUrls'
 import { createAssetFromUrl } from '../utils/createAssetFromUrl'
+import { dotcomShapeUtils } from '../utils/dotcomShapeUtils'
 import { getScratchPersistenceKey } from '../utils/scratch-persistence-key'
 import { SneakyMermaidHandler } from './SneakyMermaidHandler/SneakyMermaidHandler'
 import { SneakyOnDropOverride } from './SneakyOnDropOverride'
@@ -50,6 +51,7 @@ export function LocalEditor({
 			<Tldraw
 				licenseKey={getLicenseKey()}
 				assetUrls={assetUrls}
+				shapeUtils={dotcomShapeUtils}
 				persistenceKey={persistenceKey ?? getScratchPersistenceKey()}
 				onMount={handleMount}
 				overrides={editorOverrides}

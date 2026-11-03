@@ -51,7 +51,7 @@ async function main() {
 
 function parseArgs(args: string[]): Options {
 	const options: Options = {
-		baseUrl: 'http://127.0.0.1:3000',
+		baseUrl: 'http://127.0.0.1:25497',
 		fixture: 'snapshot-example',
 		height: DEFAULT_THUMBNAIL_HEIGHT,
 		mode: 'auto',
@@ -267,7 +267,7 @@ function printHelp() {
   pnpm --filter dotcom browser-run-thumbnail [options]
 
 Options:
-  --base-url <url>      Origin running the dotcom client. Default: http://127.0.0.1:3000
+  --base-url <url>      Origin running the dotcom client. Default: http://127.0.0.1:25497
   --fixture <name>      ${FIXTURE_NAMES.join(' | ')}. Default: snapshot-example
   --mode <mode>         auto | browser-run | local. Default: auto
   --output <path>       PNG output path. Default: tmp/browser-run-thumbnail/thumbnail.png

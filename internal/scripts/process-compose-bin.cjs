@@ -77,7 +77,10 @@ async function ensureBinary() {
 async function main() {
 	await ensureBinary()
 
-	const child = spawn(binPath, process.argv.slice(2), { stdio: 'inherit' })
+	const child = spawn(binPath, process.argv.slice(2), {
+		stdio: 'inherit',
+		env: { ...process.env, PC_PORT_NUM: process.env.PC_PORT_NUM ?? '25510' },
+	})
 	const forward = (signal) => {
 		if (!child.killed) child.kill(signal)
 	}

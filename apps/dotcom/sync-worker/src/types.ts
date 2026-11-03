@@ -81,6 +81,8 @@ export interface Environment {
 	SENTRY_DSN: string | undefined
 	SENTRY_CSP_REPORT_URI: string | undefined
 	IS_LOCAL: string | undefined
+	// `1` turns on the local dev identity (see isLocalDevAuth). Forwarded by the dev script.
+	LOCAL_DEV_AUTH: string | undefined
 	WORKER_NAME: string | undefined
 	ASSET_UPLOAD_ORIGIN: string | undefined
 	USER_CONTENT_URL: string | undefined
@@ -171,6 +173,16 @@ export interface Environment {
 	// screenshot endpoint; unset everywhere else, which is what keeps deployed environments on
 	// Browser Run.
 	LOCAL_SCREENSHOT_SERVICE_URL: string | undefined
+
+	// 3D models (`m/{modelId}/…` keys) and their converter. Bound in dev only: the 3D review board
+	// is a local prototype. See routes/models.
+	MODELS: R2Bucket | undefined
+	// HMAC secret for model converter job tokens.
+	MODEL_JOB_SECRET: string | undefined
+	// Where conversion jobs are POSTed. Defaults to the local converter service.
+	MODEL_CONVERTER_URL: string | undefined
+	// This worker's origin as the converter reaches it, for the absolute URLs in a job.
+	MODEL_WORKER_ORIGIN: string | undefined
 }
 
 export function isDebugLogging(env: Environment) {

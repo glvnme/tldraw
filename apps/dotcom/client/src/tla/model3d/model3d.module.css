@@ -1,0 +1,164 @@
+/* Canvas shape: the rendered image and nothing else, like an image shape. */
+
+.model {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	user-select: none;
+	pointer-events: none;
+}
+
+.play {
+	position: absolute;
+	right: 6px;
+	bottom: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0 0 0 2px;
+	border: none;
+	border-radius: 50%;
+	background: var(--tl-color-panel);
+	color: var(--tl-color-text-1);
+	box-shadow: var(--tl-shadow-2);
+	/* Constant on-screen size at any zoom. */
+	transform: scale(var(--tl-scale));
+	transform-origin: bottom right;
+	cursor: pointer;
+	pointer-events: all;
+}
+
+.play:hover {
+	color: var(--tl-color-selected);
+}
+
+.status {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: 100%;
+	height: 100%;
+	padding: 8px;
+	overflow: hidden;
+	color: var(--tl-color-text-3);
+	font: 12px/1.35 var(--tl-font-sans);
+	text-align: center;
+}
+
+.status[data-tone='error'] .statusLabel {
+	color: var(--tl-color-danger);
+}
+
+.statusDetail {
+	display: -webkit-box;
+	max-width: 100%;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	font-size: 11px;
+}
+
+.progress {
+	width: 56px;
+	height: 2px;
+	overflow: hidden;
+	border-radius: 1px;
+	background: var(--tl-color-muted-1);
+}
+
+.progress > span {
+	display: block;
+	height: 100%;
+	background: var(--tl-color-selected);
+	transition: width 0.2s;
+}
+
+.statusAction {
+	padding: 2px 6px;
+	border: none;
+	border-radius: var(--tl-radius-1);
+	background: none;
+	color: var(--tl-color-selected);
+	font: inherit;
+	cursor: pointer;
+	pointer-events: all;
+}
+
+.statusAction:hover {
+	background: var(--tl-color-muted-2);
+}
+
+/* Viewer */
+
+.viewer {
+	position: absolute;
+	inset: 0;
+	/* Above tldraw's panels (300) so the toolbar can't be clicked, below its menus (400). */
+	z-index: 350;
+	background: var(--tl-color-background);
+	pointer-events: all;
+	touch-action: none;
+}
+
+.viewerHidden {
+	display: none;
+}
+
+.viewerCanvas {
+	position: absolute;
+	inset: 0;
+}
+
+.viewerMessage {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	color: var(--tl-color-text-3);
+	font: 13px/1.4 var(--tl-font-sans);
+	pointer-events: none;
+}
+
+.viewerMessage button {
+	padding: 6px 12px;
+	border: none;
+	border-radius: var(--tl-radius-2);
+	background: var(--tl-color-panel);
+	color: var(--tl-color-text-1);
+	font: inherit;
+	box-shadow: var(--tl-shadow-2);
+	cursor: pointer;
+	pointer-events: all;
+}
+
+.island {
+	position: absolute;
+	bottom: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	border-radius: var(--tl-radius-4);
+	background: var(--tl-color-panel);
+	box-shadow: var(--tl-shadow-2);
+}
+
+.islandDivider {
+	align-self: center;
+	width: 1px;
+	height: 24px;
+	margin: 0 2px;
+	background: var(--tl-color-divider);
+}

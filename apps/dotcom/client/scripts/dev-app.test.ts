@@ -27,8 +27,8 @@ function listenOnRandomPort(host: string) {
 
 describe('dev-app script', () => {
 	it('passes strict port args to Vite', () => {
-		expect(getViteArgs('dev')).toEqual(['dev', '--host', '--port', '3000', '--strictPort'])
-		expect(getViteArgs('preview')).toEqual(['preview', '--host', '--port', '3000', '--strictPort'])
+		expect(getViteArgs('dev')).toEqual(['dev', '--host', '--port', '25497', '--strictPort'])
+		expect(getViteArgs('preview')).toEqual(['preview', '--host', '--port', '25497', '--strictPort'])
 	})
 
 	it('rejects when the requested port is already occupied', async () => {
@@ -43,7 +43,7 @@ describe('dev-app script', () => {
 		const calls: string[] = []
 
 		await expect(
-			assertPortFree(3000, ['::', '0.0.0.0'], async (_port, host) => {
+			assertPortFree(25497, ['::', '0.0.0.0'], async (_port, host) => {
 				calls.push(host)
 				if (host === '::') {
 					throw Object.assign(new Error('IPv6 is not available'), {
@@ -58,7 +58,7 @@ describe('dev-app script', () => {
 
 	it('rejects unexpected port probe errors', async () => {
 		await expect(
-			assertPortFree(3000, ['0.0.0.0'], async () => {
+			assertPortFree(25497, ['0.0.0.0'], async () => {
 				throw Object.assign(new Error('Unexpected probe error'), { code: 'EPERM' })
 			})
 		).rejects.toThrow('Unexpected probe error')

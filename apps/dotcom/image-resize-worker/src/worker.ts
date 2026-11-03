@@ -35,7 +35,7 @@ const queryValidator = T.object({
 })
 
 function useServiceBinding(env: Environment, origin: string) {
-	if (env.IS_LOCAL) return origin === 'localhost:3000'
+	if (env.IS_LOCAL) return origin === 'localhost:25497'
 	const multiplayerServer = env.MULTIPLAYER_SERVER
 	if (!multiplayerServer) throw new Error('Missing MULTIPLAYER_SERVER env variable')
 	return multiplayerServer.includes(origin)

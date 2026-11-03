@@ -8,6 +8,9 @@ import styles from './dialogs.module.css'
 
 const MANAGE_COOKIES_DIALOG = 'manageCookiesDialog'
 
+// @ts-ignore the client has no vite/client types, as in main.tsx
+const isLocalDevAuth = import.meta.env.VITE_LOCAL_DEV_AUTH === '1'
+
 // Asks the consent worker (which reads Cloudflare geolocation headers) whether this
 // region needs explicit consent. Any failure falls back to requiring it.
 async function shouldRequireConsent(): Promise<boolean> {
@@ -43,6 +46,9 @@ export const TlaCookieConsent = memo(function TlaCookieConsent() {
 	// Check if consent is required based on user's location
 	useEffect(() => {
 		if (consent !== null) return
+		// The consent worker rejects the local dev origin, so the check always failed and the banner
+		// covered the toasts. Consent stays undecided rather than opted in.
+		if (isLocalDevAuth) return
 
 		shouldRequireConsent().then((value) => {
 			setRequiresConsent(value)

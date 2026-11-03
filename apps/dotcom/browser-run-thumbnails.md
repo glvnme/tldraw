@@ -278,7 +278,7 @@ The sync worker needs:
 - `LOCAL_SCREENSHOT_SERVICE_URL` - development only. An HTTP screenshot service to use instead of the `BROWSER` binding, set in `[env.dev.vars]` to the client dev server's `/__screenshot` endpoint. Deployed environments leave it unset, which is what keeps them on Browser Run: the renderer is chosen by whether this var is set, not by an environment name, so an environment can only take the local path by configuring one.
 - There is no kill switch. `POST /app/mcp` is gated by the `mcp_server_access` flag alone, which decides _who_ gets through rather than whether the endpoint answers — and it cannot close it completely, because a verified `@tldraw.com` address is admitted whatever the flag says. Taking the surface down means a deploy that removes the route.
 - `MCP_SCREENSHOT_TOKEN_SECRET` (deploy var, GitHub secret) - HMAC secret for render tokens. Local dev uses the placeholder in `[env.dev.vars]`.
-- `MCP_SCREENSHOT_RENDER_ORIGIN` - set in `wrangler.toml` for dev (`http://localhost:3000`), staging, and production. Preview deploys have no `wrangler.toml` entry, so `deploy-dotcom.ts` injects the preview's own client origin (`https://${previewId}-preview-deploy.tldraw.com`) as a deploy var.
+- `MCP_SCREENSHOT_RENDER_ORIGIN` - set in `wrangler.toml` for dev (`http://localhost:25497`), staging, and production. Preview deploys have no `wrangler.toml` entry, so `deploy-dotcom.ts` injects the preview's own client origin (`https://${previewId}-preview-deploy.tldraw.com`) as a deploy var.
 - `MCP_SERVER_URL` - the MCP server's public URL: the resource identifier advertised in protected resource metadata and pointed at by the `WWW-Authenticate` challenge. **Not** compared against an incoming token — Clerk stamps no `aud`, so there is no audience binding to check; see "Authentication on the MCP server" for what stands in for one. Set in `wrangler.toml` for dev, staging, and production; previews have no entry, so `deploy-dotcom.ts` injects `https://${previewId}-preview-deploy.tldraw.com/api/app/mcp` as a deploy var. Left unset it would be derived from the request's own `Host` header, which is acceptable for local dev and tests only — see `getMcpResourceUrl`.
 - `THUMBNAILS` R2 bucket binding - board thumbnails / OG images (`og/…` keys) and their pending markers. `thumbnails-preview` in dev/preview/staging, `thumbnails` in production.
 - `MCP_DATA_BUCKET` binding - R2 bucket for MCP tool output; today that is screenshots (`mcp/…` keys). `dotcom-mcp-data-preview` in dev/preview/staging, `dotcom-mcp-data` in production.
@@ -406,7 +406,7 @@ Capture it locally without Cloudflare credentials:
 ```bash
 pnpm --filter dotcom browser-run-thumbnail \
   --mode local \
-  --base-url http://127.0.0.1:3000 \
+  --base-url http://127.0.0.1:25497 \
   --fixture snapshot-example \
   --output tmp/browser-run-thumbnail/local-thumbnail.png
 ```
@@ -426,7 +426,7 @@ pnpm --filter dotcom browser-run-thumbnail \
 When tunnelling with Vite's host checks, start the client with:
 
 ```bash
-VITE_ALLOWED_HOSTS=your-tunnel-host.example pnpm --filter dotcom exec vite dev --host 127.0.0.1 --port 3000 --strictPort
+VITE_ALLOWED_HOSTS=your-tunnel-host.example pnpm --filter dotcom exec vite dev --host 127.0.0.1 --port 25497 --strictPort
 ```
 
 ### The local screenshot service

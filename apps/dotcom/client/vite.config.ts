@@ -19,7 +19,7 @@ config({
 	path: './.env.local',
 })
 
-const multiplayerServerProxyTarget = getMultiplayerServerURL() || 'http://127.0.0.1:8787'
+const multiplayerServerProxyTarget = getMultiplayerServerURL() || 'http://127.0.0.1:25498'
 
 /**
  * Plugin to enable SPA fallback for vite preview.
@@ -85,6 +85,34 @@ function clerkJsPlugin(): Plugin {
 	}
 }
 
+// Local dev identity (README "Running without Clerk"): swaps Clerk for a fixed signed-in user.
+// Dev server only, so a production build never contains the shim.
+function localDevAuthPlugin(): Plugin {
+	return {
+		name: 'local-dev-auth',
+		config(_, { command }) {
+			if (command !== 'serve' || process.env.VITE_LOCAL_DEV_AUTH !== '1') return
+			return {
+				resolve: {
+					alias: [
+						{
+							find: /^@clerk\/clerk-react$/,
+							replacement: fileURLToPath(
+								new URL('./src/localDevAuth/clerkShim.tsx', import.meta.url)
+							),
+						},
+					],
+				},
+				define: {
+					// main.tsx and TlaRootProviders refuse to start without a key; the shim ignores it.
+					'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify('local-dev'),
+					'process.env.CLERK_JS_VERSION': 'undefined',
+				},
+			}
+		},
+	}
+}
+
 function urlOrLocalFallback(mode: string, url: string | undefined, localFallbackPort: number) {
 	if (url) {
 		return JSON.stringify(url)
@@ -111,6 +139,7 @@ export default defineConfig((env) => ({
 		thumbnailRenderEntryPlugin(),
 		spaFallbackPlugin(),
 		clerkJsPlugin(),
+		localDevAuthPlugin(),
 		thumbnailScreenshotPlugin(),
 		zodLocalePlugin(fileURLToPath(new URL('./scripts/zod-locales-shim.js', import.meta.url))),
 		react(),
@@ -159,12 +188,16 @@ export default defineConfig((env) => ({
 				.filter(([key]) => key.startsWith('NEXT_PUBLIC_'))
 				.map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)])
 		),
-		'process.env.MULTIPLAYER_SERVER': urlOrLocalFallback(env.mode, getMultiplayerServerURL(), 8787),
-		'process.env.ZERO_SERVER': urlOrLocalFallback(env.mode, process.env.ZERO_SERVER, 4848),
+		'process.env.MULTIPLAYER_SERVER': urlOrLocalFallback(
+			env.mode,
+			getMultiplayerServerURL(),
+			25498
+		),
+		'process.env.ZERO_SERVER': urlOrLocalFallback(env.mode, process.env.ZERO_SERVER, 25503),
 		'process.env.USER_CONTENT_URL': urlOrLocalFallback(
 			env.mode,
 			process.env.USER_CONTENT_URL,
-			8789
+			25500
 		),
 		'process.env.TLDRAW_ENV': JSON.stringify(process.env.TLDRAW_ENV ?? 'development'),
 		// A monotonic build identifier (epoch ms at build time). Sent as `?v=` on sync websocket
@@ -180,6 +213,8 @@ export default defineConfig((env) => ({
 		),
 	},
 	server: {
+		port: 25497,
+		strictPort: true,
 		allowedHosts: process.env.VITE_ALLOWED_HOSTS?.split(',').filter(Boolean),
 		proxy: {
 			// OAuth protected resource metadata for the MCP server. Served by the sync worker but
@@ -216,6 +251,8 @@ export default defineConfig((env) => ({
 		},
 	},
 	preview: {
+		port: 25497,
+		strictPort: true,
 		proxy: {
 			// See the dev server proxy above.
 			'/.well-known/oauth-protected-resource': {

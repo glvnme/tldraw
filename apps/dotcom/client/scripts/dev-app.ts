@@ -3,7 +3,7 @@ import { createServer } from 'net'
 import { pathToFileURL } from 'url'
 import { killProcessTree } from '../../../../internal/scripts/lib/kill-tree'
 
-const CLIENT_PORT = 3000
+const CLIENT_PORT = 25497
 const SKIPPABLE_PROBE_ERROR_CODES = new Set(['EADDRNOTAVAIL', 'EAFNOSUPPORT'])
 
 type PortProbe = (port: number, host: string) => Promise<void>
@@ -54,7 +54,7 @@ async function main() {
 	// On shutdown, reap vite *and its children* (esbuild/optimizer helpers) by walking the PID tree
 	// and killing deepest-first. This runs in the signal handler, while the tree is still alive —
 	// not on `exit` — because once vite exits its helpers reparent to launchd and a `pgrep` walk from
-	// us can no longer find them, so they would orphan and keep holding port 3000.
+	// us can no longer find them, so they would orphan and keep holding port 25497.
 	let shuttingDown = false
 	const shutdown = () => {
 		if (shuttingDown) return

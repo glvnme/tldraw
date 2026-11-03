@@ -8,8 +8,8 @@ export const cspDirectives: { [key: string]: string[] } = {
 		`wss:`,
 		'blob:',
 		'data:',
-		'http://localhost:8788',
-		'http://localhost:8789',
+		'http://localhost:25499',
+		'http://localhost:25500',
 		`https://*.tldraw.xyz`,
 		`https://cdn.tldraw.com`,
 		`https://*.tldraw.workers.dev`,
@@ -20,8 +20,6 @@ export const cspDirectives: { [key: string]: string[] } = {
 		'https://www.google-analytics.com',
 		'https://*.googletagmanager.com',
 		'https://www.googletagmanager.com',
-		// for thumbnail server
-		'http://localhost:5002',
 		'https://*.clerk.accounts.dev',
 		'https://clerk.tldraw.com',
 		'https://clerk.staging.tldraw.com',
@@ -29,7 +27,7 @@ export const cspDirectives: { [key: string]: string[] } = {
 		// zero
 		'https://*.zero.tldraw.com',
 		'https://zero.tldraw.com',
-		'http://localhost:4848',
+		'http://localhost:25503',
 		'https://analytics.tldraw.com',
 		'https://consent.tldraw.xyz',
 		'https://stats.g.doubleclick.net',
@@ -47,6 +45,8 @@ export const cspDirectives: { [key: string]: string[] } = {
 	'media-src': [`'self'`, `http:`, `https:`, `data:`, `blob:`],
 	'script-src': [
 		`'self'`,
+		// the meshopt decoder in the 3D viewer compiles WebAssembly
+		`'wasm-unsafe-eval'`,
 		`'${COMMON_ROOM_SNIPPET_CSP_HASH}'`,
 		'https://challenges.cloudflare.com',
 		'https://*.clerk.accounts.dev',
