@@ -6,7 +6,7 @@ import { defaultHandleExternalFileContent, useEditor, useToasts, useTranslation 
 import { routes } from '../../../../routeDefs'
 import { useMaybeApp } from '../../../hooks/useAppState'
 import { useCurrentFileId } from '../../../hooks/useCurrentFileId'
-import { addModel3dFiles, isModel3dFile } from '../../../model3d/drop'
+import { isModel3dFile, useAddModel3dFiles } from '../../../model3d/drop'
 import { isTldrFile, useRejectTldrawOfflineFiles } from '../../../utils/tldrawOfflineFiles'
 
 export const SneakyTldrawFileDropHandler = memo(function SneakyTldrawFileDropHandler() {
@@ -18,21 +18,14 @@ export const SneakyTldrawFileDropHandler = memo(function SneakyTldrawFileDropHan
 	const navigate = useNavigate()
 	const fileId = useCurrentFileId()
 	const rejectTldrawOfflineFiles = useRejectTldrawOfflineFiles()
+	const addModel3dFiles = useAddModel3dFiles()
 	useEffect(() => {
 		if (!auth) return
 		if (!app) return
 		editor.registerExternalContentHandler('files', async (content) => {
 			const allFiles = rejectTldrawOfflineFiles(content.files)
 			const modelFiles = allFiles.filter(isModel3dFile)
-			if (modelFiles.length > 0) {
-				addModel3dFiles(editor, modelFiles, {
-					point: content.point,
-					fileId: fileId && app.getFile(fileId)?.owningGroupId ? fileId : null,
-					getToken: async () => (await auth.getToken()) ?? undefined,
-					toasts,
-					msg,
-				})
-			}
+			if (modelFiles.length > 0) addModel3dFiles(modelFiles, content.point)
 			const files = allFiles.filter((file) => !isModel3dFile(file))
 			const tldrawFiles = files.filter(isTldrFile)
 			if (tldrawFiles.length > 0) {
@@ -54,6 +47,6 @@ export const SneakyTldrawFileDropHandler = memo(function SneakyTldrawFileDropHan
 				await defaultHandleExternalFileContent(editor, { ...content, files }, { toasts, msg })
 			}
 		})
-	}, [editor, app, auth, toasts, msg, navigate, fileId, rejectTldrawOfflineFiles])
+	}, [editor, app, auth, toasts, msg, navigate, fileId, rejectTldrawOfflineFiles, addModel3dFiles])
 	return null
 })

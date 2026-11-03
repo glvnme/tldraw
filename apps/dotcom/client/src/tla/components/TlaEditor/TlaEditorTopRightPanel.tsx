@@ -5,7 +5,6 @@ import {
 	useCommentsSidebarOpen,
 } from '@tldraw/commenting'
 import {
-	MODEL3D_SOURCE_FORMATS,
 	PUBLISH_PREFIX,
 	READ_ONLY_LEGACY_PREFIX,
 	READ_ONLY_PREFIX,
@@ -30,6 +29,7 @@ import { routes } from '../../../routeDefs'
 import { useMaybeApp } from '../../hooks/useAppState'
 import { useCurrentFileId } from '../../hooks/useCurrentFileId'
 import { useIsCommentingEnabled } from '../../hooks/useIsCommentingEnabled'
+import { pickModel3dFiles, useAddModel3dFiles } from '../../model3d/drop'
 import { model3dMessages } from '../../model3d/messages'
 import { useTldrawAppUiEvents } from '../../utils/app-ui-events'
 import { TlaSignInDialog } from '../dialogs/TlaSignInDialog'
@@ -124,34 +124,23 @@ export function TlaEditorTopRightPanel({
 
 function Model3dUploadButton() {
 	const editor = useEditor()
-	const inputRef = useRef<HTMLInputElement>(null)
+	const addModel3dFiles = useAddModel3dFiles()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
 
 	if (isReadonly) return null
 
 	return (
-		<>
-			<input
-				ref={inputRef}
-				type="file"
-				accept={MODEL3D_SOURCE_FORMATS.map((format) => `.${format}`).join(',')}
-				multiple
-				hidden
-				onChange={(event) => {
-					const files = Array.from(event.currentTarget.files ?? [])
-					event.currentTarget.value = ''
-					if (files.length > 0) void editor.putExternalContent({ type: 'files', files })
-				}}
-			/>
-			<TlaCtaButton
-				canvas
-				secondary
-				data-testid="tla-upload-model-button"
-				onClick={() => inputRef.current?.click()}
-			>
-				<F {...model3dMessages.uploadModel} />
-			</TlaCtaButton>
-		</>
+		<TlaCtaButton
+			canvas
+			secondary
+			data-testid="tla-upload-model-button"
+			onClick={async () => {
+				const files = await pickModel3dFiles(editor.getContainerDocument())
+				if (files.length > 0) addModel3dFiles(files)
+			}}
+		>
+			<F {...model3dMessages.uploadModel} />
+		</TlaCtaButton>
 	)
 }
 
