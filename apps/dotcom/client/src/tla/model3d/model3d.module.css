@@ -106,7 +106,7 @@
 	inset: 0;
 	/* Above tldraw's panels (300) so the toolbar can't be clicked, below its menus (400). */
 	z-index: 350;
-	background: #eceef1;
+	background: var(--tl-color-background);
 	pointer-events: all;
 	touch-action: none;
 }
@@ -120,42 +120,6 @@
 	inset: 0;
 }
 
-.viewerBar {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	display: flex;
-	gap: 6px;
-}
-
-.viewerBar button {
-	padding: 6px 12px;
-	border: 1px solid rgba(0, 0, 0, 0.1);
-	border-radius: 8px;
-	background: white;
-	color: #1d1d1d;
-	font: 13px/1.2 var(--tl-font-sans, sans-serif);
-	cursor: pointer;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.viewerBar button:disabled {
-	cursor: default;
-	opacity: 0.6;
-}
-
-.viewerName {
-	position: absolute;
-	top: 14px;
-	left: 56px;
-	right: 88px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	color: #1d1d1d;
-	font: 600 14px/1.2 var(--tl-font-sans, sans-serif);
-}
-
 .viewerMessage {
 	position: absolute;
 	inset: 0;
@@ -164,75 +128,37 @@
 	align-items: center;
 	justify-content: center;
 	gap: 12px;
-	color: #444;
-	font: 14px/1.4 var(--tl-font-sans, sans-serif);
+	color: var(--tl-color-text-3);
+	font: 13px/1.4 var(--tl-font-sans);
+	pointer-events: none;
 }
 
 .viewerMessage button {
 	padding: 6px 12px;
-	border: 1px solid rgba(0, 0, 0, 0.15);
-	border-radius: 8px;
-	background: white;
-	cursor: pointer;
-}
-
-.viewerTools {
-	position: absolute;
-	bottom: 16px;
-	left: 50%;
-	transform: translateX(-50%);
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 4px 8px;
-	width: max-content;
-	max-width: calc(100% - 24px);
-	padding: 8px;
-	border-radius: 14px;
+	border: none;
+	border-radius: var(--tl-radius-2);
 	background: var(--tl-color-panel);
 	color: var(--tl-color-text-1);
+	font: inherit;
 	box-shadow: var(--tl-shadow-2);
-	font: 13px/1.2 var(--tl-font-sans, sans-serif);
+	cursor: pointer;
+	pointer-events: all;
 }
 
-.toolGroup {
-	display: flex;
-	gap: 4px;
-	flex-wrap: wrap;
-	justify-content: center;
+.island {
+	position: absolute;
+	bottom: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	border-radius: var(--tl-radius-4);
+	background: var(--tl-color-panel);
+	box-shadow: var(--tl-shadow-2);
 }
-.viewerTools button {
-	min-height: 36px;
-	padding: 8px 12px;
-	border: none;
-	border-radius: 8px;
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	cursor: pointer;
-}
-.viewerTools button:hover {
-	background: var(--tl-color-muted-2);
-}
-.viewerTools button[aria-pressed='true'] {
-	background: var(--tl-color-muted-1);
-}
-.viewerTools button.primaryTool {
-	background: var(--tl-color-selected);
-	color: var(--tl-color-selected-contrast);
-}
-.viewerTools button:disabled {
-	opacity: 0.5;
-	cursor: default;
-}
-.viewerTools button:focus-visible {
-	outline: 2px solid var(--tl-color-selected);
-	outline-offset: 2px;
-}
-.viewerHint {
-	flex-basis: 100%;
-	padding: 4px;
-	text-align: center;
-	color: var(--tl-color-text-3);
-	font-size: 11px;
+
+.islandDivider {
+	align-self: center;
+	width: 1px;
+	height: 24px;
+	margin: 0 2px;
+	background: var(--tl-color-divider);
 }

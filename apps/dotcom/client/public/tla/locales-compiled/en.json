@@ -215,6 +215,12 @@
       "value": "Loading"
     }
   ],
+  "17d440bf27": [
+    {
+      "type": 0,
+      "value": "Reset view"
+    }
+  ],
   "181b90f889": [
     {
       "type": 0,
@@ -262,12 +268,6 @@
       "value": "Workspace name"
     }
   ],
-  "224ca2151f": [
-    {
-      "type": 0,
-      "value": "Saving view…"
-    }
-  ],
   "23dcace54a": [
     {
       "type": 0,
@@ -286,12 +286,6 @@
     {
       "type": 0,
       "value": ". Create a free account to continue."
-    }
-  ],
-  "2448694676": [
-    {
-      "type": 0,
-      "value": "Drag to move · Scroll to zoom · Right-drag to pan"
     }
   ],
   "24946dcde3": [
@@ -416,12 +410,6 @@
     {
       "type": 0,
       "value": "Remove member"
-    }
-  ],
-  "3a676daea5": [
-    {
-      "type": 0,
-      "value": "3D tools"
     }
   ],
   "3b54f37983": [
@@ -658,12 +646,6 @@
       "value": "Share"
     }
   ],
-  "5b39065595": [
-    {
-      "type": 0,
-      "value": "Default view saved. The canvas preview is updated."
-    }
-  ],
   "5bec508475": [
     {
       "type": 0,
@@ -817,12 +799,6 @@
       "value": "A new version of tldraw is available. Please reload the page to continue."
     }
   ],
-  "6691564330": [
-    {
-      "type": 0,
-      "value": "Default view"
-    }
-  ],
   "67ed6ddb7d": [
     {
       "type": 0,
@@ -877,12 +853,6 @@
       "value": "Follow these steps to import the content manually:"
     }
   ],
-  "7081460890": [
-    {
-      "type": 0,
-      "value": "Hide view"
-    }
-  ],
   "70a6facb9d": [
     {
       "type": 0,
@@ -893,12 +863,6 @@
     {
       "type": 0,
       "value": "Return to view"
-    }
-  ],
-  "710ff9907a": [
-    {
-      "type": 0,
-      "value": "Fit model"
     }
   ],
   "71a29b007b": [
@@ -1151,12 +1115,6 @@
     {
       "type": 0,
       "value": "Check your email for a verification code."
-    }
-  ],
-  "8d2de53685": [
-    {
-      "type": 0,
-      "value": "Rotate"
     }
   ],
   "8eb2c00e96": [
@@ -1993,6 +1951,12 @@
       "value": "Terms of service"
     }
   ],
+  "e4f9c3677f": [
+    {
+      "type": 0,
+      "value": "Default view saved"
+    }
+  ],
   "e65b2dcb6f": [
     {
       "children": [
@@ -2027,6 +1991,12 @@
     {
       "type": 0,
       "value": "or"
+    }
+  ],
+  "e93aa9da61": [
+    {
+      "type": 0,
+      "value": "3D view"
     }
   ],
   "e958534988": [
@@ -2113,12 +2083,6 @@
     {
       "type": 0,
       "value": "This comment was deleted."
-    }
-  ],
-  "eedf6b8bfc": [
-    {
-      "type": 0,
-      "value": "Saving…"
     }
   ],
   "ef53538ae4": [
@@ -2271,12 +2235,6 @@
     {
       "type": 0,
       "value": "Reading the model"
-    }
-  ],
-  "f6d4a17b27": [
-    {
-      "type": 0,
-      "value": "Pan"
     }
   ],
   "f88d81f30c": [

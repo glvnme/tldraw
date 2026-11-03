@@ -57,7 +57,7 @@
 .letterbox {
 	position: absolute;
 	/* Darkens the bars around the letterboxed view. */
-	box-shadow: 0 0 0 100vmax rgba(30, 32, 40, 0.35);
+	box-shadow: 0 0 0 100vmax var(--tl-color-overlay);
 	pointer-events: none;
 }
 
@@ -67,79 +67,42 @@
 	height: 100%;
 }
 
+/* Opens above the island's views button. */
 .list {
 	position: absolute;
-	bottom: 152px;
-	left: 12px;
+	bottom: 68px;
+	left: 50%;
 	display: flex;
 	flex-direction: column;
-	min-width: 160px;
+	min-width: 200px;
 	max-height: 50%;
-	padding: 6px;
+	padding: 4px;
 	overflow-y: auto;
-	border-radius: 10px;
-	background: white;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-	font: 13px/1.2 var(--tl-font-sans, sans-serif);
+	transform: translateX(-50%);
+	border-radius: var(--tl-radius-3);
+	background: var(--tl-color-panel);
+	box-shadow: var(--tl-shadow-3);
 }
 
-.listHeading {
-	display: flex;
-	align-items: center;
+.list :global(.tlui-button__menu) {
 	justify-content: space-between;
-	padding: 4px 6px 6px;
-	color: #666;
-	font-weight: 600;
+	gap: 12px;
 }
 
-.listClear {
-	padding: 0 4px;
-	border: none;
-	background: none;
-	color: #666;
-	font-size: 16px;
-	line-height: 1;
-	cursor: pointer;
-}
-
-.listItem {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	padding: 6px;
-	border: none;
-	border-radius: 6px;
-	background: none;
-	color: #1d1d1d;
-	font: inherit;
-	text-align: left;
-	cursor: pointer;
-}
-
-.listItem:hover {
-	background: #f1f2f4;
-}
-
-.listItemActive,
-.listItemActive:hover {
-	background: #e6efff;
-}
-
-.listName {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+.list :global(.tlui-button__menu[data-isactive='true']) {
+	background: var(--tl-color-muted-2);
 }
 
 .returnToView {
 	position: absolute;
-	bottom: 116px;
+	top: 8px;
 	left: 50%;
 	transform: translateX(-50%);
+	border-radius: var(--tl-radius-3);
+	background: var(--tl-color-panel);
+	box-shadow: var(--tl-shadow-2);
 }
 
-.returnToView,
 .sketchBar button {
 	padding: 6px 12px;
 	border: 1px solid rgba(0, 0, 0, 0.1);

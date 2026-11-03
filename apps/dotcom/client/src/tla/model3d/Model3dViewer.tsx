@@ -5,8 +5,19 @@ import {
 	model3dPaths,
 } from '@tldraw/dotcom-shared'
 import classNames from 'classnames'
-import { useEffect, useRef, useState } from 'react'
-import { EditorPortal, TLShapeId, useEditor, useToasts, useTranslation, useValue } from 'tldraw'
+import { ReactNode, useEffect, useRef, useState } from 'react'
+import {
+	EditorPortal,
+	TLShapeId,
+	TLUiIconType,
+	TldrawUiButtonIcon,
+	TldrawUiToolbar,
+	TldrawUiToolbarButton,
+	useEditor,
+	useToasts,
+	useTranslation,
+	useValue,
+} from 'tldraw'
 import { useTldrawCurrentUser } from '../hooks/useUser'
 import { model3dUrl } from './api'
 import { loadLastModel3dCamera, saveLastModel3dCamera } from './cameraStorage'
@@ -17,6 +28,7 @@ import {
 	letterboxStyle,
 	useModel3dRevisionLetterbox,
 } from './revisions/RevisionsPanel'
+import { getModel3dRevisions } from './revisions/state'
 import { enterModel3dSketch } from './sketch/session'
 import { useModel3dStatus } from './status'
 import { captureModel3dThumbnail } from './thumbnail'
@@ -77,12 +89,9 @@ export function Model3dViewer({ state }: { state: Model3dViewerState }) {
 				) : (
 					<>
 						<div className={styles.viewerMessage}>{msg(messages.stillUploading)}</div>
-						<div className={styles.viewerBar}>
-							<button onClick={() => closeModel3dViewer(editor)}>{msg(messages.close)}</button>
-						</div>
+						<ViewerIsland />
 					</>
 				)}
-				<div className={styles.viewerName}>{shape.props.altText}</div>
 			</div>
 		</EditorPortal>
 	)
@@ -104,12 +113,12 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 	const { addToast } = useToasts()
 	const [isSavingView, setIsSavingView] = useState(false)
 	const [isSavingDefault, setIsSavingDefault] = useState(false)
-	const [navigation, setNavigation] = useState<'orbit' | 'pan'>('orbit')
+	const [showViews, setShowViews] = useState(false)
 	const rAbort = useRef<AbortController | null>(null)
-	const defaultView = useValue(
-		'default model view',
-		() => editor.getShape<TLModel3dShape>(shapeId)?.props.defaultView,
-		[editor, shapeId]
+	const hasViews = useValue(
+		'model3d has views',
+		() => getModel3dRevisions(editor, modelId).length > 0,
+		[editor, modelId]
 	)
 
 	useEffect(() => {
@@ -155,7 +164,6 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 				created = engine
 				stopCameraSaves = saveCameraChanges(engine, modelId, userId)
 				setEngine(engine)
-				setNavigation('orbit')
 				setLoad({ kind: 'ready' })
 				getModel3dViewerHandle(editor).set(engine)
 				await captureModel3dThumbnail(editor, shapeId, engine, signal).catch((e) => {
@@ -206,6 +214,13 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 		}
 	}
 
+	const resetView = () => {
+		const defaultView = editor.getShape<TLModel3dShape>(shapeId)?.props.defaultView
+		if (defaultView) engine?.setCamera(defaultView, { animate: true })
+		else engine?.fit()
+	}
+	const isBusy = isSavingDefault || isSavingView
+
 	return (
 		<>
 			<div
@@ -213,7 +228,13 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 				className={styles.viewerCanvas}
 				style={letterbox ? letterboxStyle(letterbox) : undefined}
 			/>
-			{engine && <Model3dRevisionsPanel modelId={modelId} handle={engine} />}
+			{engine && (
+				<Model3dRevisionsPanel
+					modelId={modelId}
+					handle={engine}
+					isListOpen={showViews && hasViews}
+				/>
+			)}
 			{!isReady ? (
 				<div className={styles.viewerMessage}>
 					{msg(
@@ -239,56 +260,85 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 					<button onClick={() => setAttempt((n) => n + 1)}>{msg(messages.retry)}</button>
 				</div>
 			) : null}
-			<div className={styles.viewerBar}>
-				<button onClick={() => closeModel3dViewer(editor)}>{msg(messages.close)}</button>
-			</div>
-			{engine && (
-				<div className={styles.viewerTools} role="group" aria-label={msg(messages.viewerTools)}>
-					<div className={styles.toolGroup}>
-						<button
-							aria-pressed={navigation === 'orbit'}
-							onClick={() => {
-								engine.setNavigation('orbit')
-								setNavigation('orbit')
-							}}
-						>
-							{msg(messages.orbit)}
-						</button>
-						<button
-							aria-pressed={navigation === 'pan'}
-							onClick={() => {
-								engine.setNavigation('pan')
-								setNavigation('pan')
-							}}
-						>
-							{msg(messages.pan)}
-						</button>
-						<button onClick={() => engine.fit()}>{msg(messages.fit)}</button>
-						<button
-							disabled={!defaultView}
-							onClick={() => defaultView && engine.setCamera(defaultView, { animate: true })}
-						>
-							{msg(messages.defaultView)}
-						</button>
-					</div>
-					{!isReadonly && (
-						<div className={styles.toolGroup}>
-							<button disabled={isSavingDefault || isSavingView} onClick={setDefaultView}>
-								{msg(isSavingDefault ? messages.savingDefault : messages.setDefaultView)}
-							</button>
-							<button
-								className={styles.primaryTool}
-								disabled={isSavingView || isSavingDefault}
-								onClick={lockAndSketch}
-							>
-								{msg(isSavingView ? revisionMessages.savingView : revisionMessages.lockAndSketch)}
-							</button>
-						</div>
-					)}
-					<span className={styles.viewerHint}>{msg(messages.navigationHint)}</span>
-				</div>
-			)}
+			<ViewerIsland>
+				<IslandButton
+					icon="corners"
+					label={msg(messages.resetView)}
+					disabled={!engine}
+					onClick={resetView}
+				/>
+				{!isReadonly && (
+					<>
+						<IslandButton
+							icon="bookmark"
+							label={msg(messages.setDefaultView)}
+							disabled={!engine || isBusy}
+							onClick={setDefaultView}
+						/>
+						<IslandButton
+							icon="tool-pencil"
+							label={msg(revisionMessages.lockAndSketch)}
+							disabled={!engine || isBusy}
+							onClick={lockAndSketch}
+						/>
+					</>
+				)}
+				<div className={styles.islandDivider} />
+				<IslandButton
+					icon="list"
+					label={msg(revisionMessages.views)}
+					disabled={!engine || !hasViews}
+					isActive={showViews && hasViews}
+					onClick={() => setShowViews((v) => !v)}
+				/>
+			</ViewerIsland>
 		</>
+	)
+}
+
+/** The viewer's single floating toolbar, styled like tldraw's main toolbar. Close is always last. */
+function ViewerIsland({ children }: { children?: ReactNode }) {
+	const editor = useEditor()
+	const msg = useTranslation()
+	return (
+		<div className={styles.island}>
+			<TldrawUiToolbar label={msg(messages.viewerTools)} tooltipSide="top">
+				{children}
+				{children && <div className={styles.islandDivider} />}
+				<IslandButton
+					icon="cross-2"
+					label={msg(messages.close)}
+					onClick={() => closeModel3dViewer(editor)}
+				/>
+			</TldrawUiToolbar>
+		</div>
+	)
+}
+
+function IslandButton({
+	icon,
+	label,
+	onClick,
+	disabled,
+	isActive,
+}: {
+	icon: TLUiIconType
+	label: string
+	onClick(): void
+	disabled?: boolean
+	isActive?: boolean
+}) {
+	return (
+		<TldrawUiToolbarButton
+			type="tool"
+			title={label}
+			disabled={disabled}
+			isActive={isActive}
+			aria-pressed={isActive}
+			onClick={onClick}
+		>
+			<TldrawUiButtonIcon icon={icon} />
+		</TldrawUiToolbarButton>
 	)
 }
 

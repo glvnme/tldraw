@@ -6,8 +6,6 @@ import {
 	LoadingManager,
 	MathUtils,
 	Mesh,
-	MOUSE,
-	TOUCH,
 	Object3D,
 	OrthographicCamera,
 	PerspectiveCamera,
@@ -26,7 +24,6 @@ import { fetch } from 'tldraw'
 
 export interface Model3dViewerEngine extends ViewerHandle {
 	fit(): void
-	setNavigation(mode: 'orbit' | 'pan'): void
 	dispose(): void
 }
 
@@ -77,7 +74,6 @@ export async function createModel3dViewerEngine(
 	let paused = false
 	let frame = 0
 	let animation = 0
-	let navigation: 'orbit' | 'pan' = 'orbit'
 	const listeners = new Set<(camera: Model3dCamera) => void>()
 
 	const renderNow = () => {
@@ -116,8 +112,6 @@ export async function createModel3dViewerEngine(
 	const createControls = () => {
 		const next = new OrbitControls(camera, canvas)
 		next.enableDamping = false
-		next.mouseButtons.LEFT = navigation === 'pan' ? MOUSE.PAN : MOUSE.ROTATE
-		next.touches.ONE = navigation === 'pan' ? TOUCH.PAN : TOUCH.ROTATE
 		next.addEventListener('start', () => cancelAnimationFrame(animation))
 		next.addEventListener('change', () => {
 			requestRender()
@@ -276,11 +270,6 @@ export async function createModel3dViewerEngine(
 			controls.update()
 			requestRender()
 			emitCameraChange()
-		},
-		setNavigation(mode) {
-			navigation = mode
-			controls.mouseButtons.LEFT = mode === 'pan' ? MOUSE.PAN : MOUSE.ROTATE
-			controls.touches.ONE = mode === 'pan' ? TOUCH.PAN : TOUCH.ROTATE
 		},
 		getCamera,
 		setCamera(value, { animate = false } = {}) {

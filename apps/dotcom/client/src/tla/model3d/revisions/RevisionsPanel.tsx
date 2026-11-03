@@ -1,7 +1,6 @@
 import type { ViewerHandle } from '@tldraw/dotcom-shared'
-import classNames from 'classnames'
 import { CSSProperties, useEffect, useState } from 'react'
-import { TldrawUiIcon, useEditor, useTranslation, useValue } from 'tldraw'
+import { TldrawUiButton, TldrawUiButtonLabel, useEditor, useTranslation, useValue } from 'tldraw'
 import { Model3dRevisionEditBadge } from '../Model3dRevisionShapeUtil'
 import { isCameraAtPose } from './cameraMatch'
 import { Model3dRect, letterbox } from './layout'
@@ -49,12 +48,15 @@ export function letterboxStyle(rect: Model3dRect): CSSProperties {
 	return { left: rect.x, top: rect.y, width: rect.w, height: rect.h, right: 'auto', bottom: 'auto' }
 }
 
+/** The shown revision's overlay, and the list of the model's revisions while `isListOpen`. */
 export function Model3dRevisionsPanel({
 	modelId,
 	handle,
+	isListOpen,
 }: {
 	modelId: string
 	handle: ViewerHandle
+	isListOpen: boolean
 }) {
 	const editor = useEditor()
 	const msg = useTranslation()
@@ -118,39 +120,33 @@ export function Model3dRevisionsPanel({
 				</div>
 			)}
 			{revision && !isAtPose && !pendingCamera && (
-				<button
-					className={styles.returnToView}
-					onClick={() => showModel3dRevision(editor, revision.id)}
-				>
-					{msg(messages.returnToView)}
-				</button>
+				<div className={styles.returnToView}>
+					<TldrawUiButton type="normal" onClick={() => showModel3dRevision(editor, revision.id)}>
+						<TldrawUiButtonLabel>{msg(messages.returnToView)}</TldrawUiButtonLabel>
+					</TldrawUiButton>
+				</div>
 			)}
-			{revisions.length > 0 && (
-				<div className={styles.list}>
-					<div className={styles.listHeading}>
-						<span>{msg(messages.views)}</span>
-						{revision && (
-							<button
-								className={styles.listClear}
-								onClick={() => getModel3dRevisionView(editor).set(null)}
+			{isListOpen && (
+				<div className={styles.list} role="group" aria-label={msg(messages.views)}>
+					{revisions.map((r) => {
+						const isShown = r.id === revision?.id
+						return (
+							<TldrawUiButton
+								key={r.id}
+								type="menu"
+								isActive={isShown}
+								aria-pressed={isShown}
+								onClick={() =>
+									isShown
+										? getModel3dRevisionView(editor).set(null)
+										: showModel3dRevision(editor, r.id)
+								}
 							>
-								<TldrawUiIcon icon="cross-2" label={msg(messages.hideView)} small />
-							</button>
-						)}
-					</div>
-					{revisions.map((r) => (
-						<button
-							key={r.id}
-							className={classNames(
-								styles.listItem,
-								r.id === revision?.id && styles.listItemActive
-							)}
-							onClick={() => showModel3dRevision(editor, r.id)}
-						>
-							<span className={styles.listName}>{r.props.name}</span>
-							<Model3dRevisionEditBadge shape={r} />
-						</button>
-					))}
+								<TldrawUiButtonLabel>{r.props.name}</TldrawUiButtonLabel>
+								<Model3dRevisionEditBadge shape={r} />
+							</TldrawUiButton>
+						)
+					})}
 				</div>
 			)}
 		</>

@@ -86,6 +86,9 @@
   "16bfbf9c46": {
     "translation": "Loading"
   },
+  "17d440bf27": {
+    "translation": "Reset view"
+  },
   "181b90f889": {
     "translation": "Create file"
   },
@@ -107,14 +110,8 @@
   "21f66c9c00": {
     "translation": "Workspace name"
   },
-  "224ca2151f": {
-    "translation": "Saving view…"
-  },
   "23dcace54a": {
     "translation": "You have been invited to join <strong>{workspaceName}</strong>. Create a free account to continue."
-  },
-  "2448694676": {
-    "translation": "Drag to move · Scroll to zoom · Right-drag to pan"
   },
   "24946dcde3": {
     "translation": "The model is still uploading."
@@ -172,9 +169,6 @@
   },
   "375396d6e5": {
     "translation": "Remove member"
-  },
-  "3a676daea5": {
-    "translation": "3D tools"
   },
   "3b54f37983": {
     "translation": "The 3D view stopped working."
@@ -281,9 +275,6 @@
   "5a95a425f7": {
     "translation": "Share"
   },
-  "5b39065595": {
-    "translation": "Default view saved. The canvas preview is updated."
-  },
   "5bec508475": {
     "translation": "Old browser detected. Please update your browser to use this app."
   },
@@ -344,9 +335,6 @@
   "6637a98151": {
     "translation": "A new version of tldraw is available. Please reload the page to continue."
   },
-  "6691564330": {
-    "translation": "Default view"
-  },
   "67ed6ddb7d": {
     "translation": "Edited"
   },
@@ -374,17 +362,11 @@
   "6dfc62f621": {
     "translation": "Follow these steps to import the content manually:"
   },
-  "7081460890": {
-    "translation": "Hide view"
-  },
   "70a6facb9d": {
     "translation": "This week"
   },
   "70df67b7f8": {
     "translation": "Return to view"
-  },
-  "710ff9907a": {
-    "translation": "Fit model"
   },
   "71a29b007b": {
     "translation": "Have a bug, issue, or idea for tldraw? Let us know!"
@@ -490,9 +472,6 @@
   },
   "8c2d3d730c": {
     "translation": "Check your email for a verification code."
-  },
-  "8d2de53685": {
-    "translation": "Rotate"
   },
   "8eb2c00e96": {
     "translation": "Shared with you"
@@ -789,11 +768,17 @@
   "e404559826": {
     "translation": "Terms of service"
   },
+  "e4f9c3677f": {
+    "translation": "Default view saved"
+  },
   "e65b2dcb6f": {
     "translation": "<name>{a}</name> and <name>{b}</name> reacted to your comment"
   },
   "e81c4e4f2b": {
     "translation": "or"
+  },
+  "e93aa9da61": {
+    "translation": "3D view"
   },
   "e958534988": {
     "translation": "The converter is not running."
@@ -831,9 +816,6 @@
   "edec9387f9": {
     "translation": "This comment was deleted."
   },
-  "eedf6b8bfc": {
-    "translation": "Saving…"
-  },
   "ef53538ae4": {
     "translation": "Members"
   },
@@ -869,9 +851,6 @@
   },
   "f61cd880f1": {
     "translation": "Reading the model"
-  },
-  "f6d4a17b27": {
-    "translation": "Pan"
   },
   "f88d81f30c": {
     "translation": "Converting"
