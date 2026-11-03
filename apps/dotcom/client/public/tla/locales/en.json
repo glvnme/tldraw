@@ -26,9 +26,6 @@
   "05f43078e9": {
     "translation": "You have reached the maximum number of workspaces. You need to delete old workspaces before creating new ones."
   },
-  "065918e2c8": {
-    "translation": "Upload failed: {error}"
-  },
   "06b9281e39": {
     "translation": "Auto"
   },
@@ -86,8 +83,14 @@
   "14b03eeeb5": {
     "translation": "Notification options"
   },
+  "16bfbf9c46": {
+    "translation": "Loading"
+  },
   "181b90f889": {
     "translation": "Create file"
+  },
+  "19af319f85": {
+    "translation": "Optimizing"
   },
   "1da2e8106b": {
     "translation": "An unexpected error occurred."
@@ -203,9 +206,6 @@
   "42e53c47c1": {
     "translation": "Contact the owner to request access."
   },
-  "43c14d3ed9": {
-    "translation": "Converting: parsing"
-  },
   "44db318ee5": {
     "translation": "Get help on Discord"
   },
@@ -235,6 +235,9 @@
   },
   "4d783c1889": {
     "translation": "Republish"
+  },
+  "4e11db406c": {
+    "translation": "Saving"
   },
   "5097d89907": {
     "translation": "Unsupported diagram, will generate SVG instead"
@@ -289,9 +292,6 @@
   },
   "5bffeebf03": {
     "translation": "<name>{author}</name> reacted to your comment"
-  },
-  "5c8474d17f": {
-    "translation": "Upload interrupted. Drop the file again."
   },
   "5d04a002ea": {
     "translation": "Unable to connect"
@@ -361,6 +361,9 @@
   },
   "6a26f54883": {
     "translation": "Help"
+  },
+  "6b192cb554": {
+    "translation": "Upload interrupted"
   },
   "6bc9ee7c6b": {
     "translation": "3D model"
@@ -611,9 +614,6 @@
   "abc92b8ac9": {
     "translation": "Could not save the default view. Try again."
   },
-  "acbb8a36e0": {
-    "translation": "{count, number} triangles"
-  },
   "af3dc88931": {
     "notes": "This is used to show the last time the file was published. An example is 'Last published 5 minutes ago'.",
     "translation": "Last published <date></date>"
@@ -659,6 +659,9 @@
   },
   "b758336699": {
     "translation": "Copy link"
+  },
+  "b8d0eb5b8b": {
+    "translation": "Conversion failed"
   },
   "ba0318cb81": {
     "translation": "Sign in to share"
@@ -726,14 +729,8 @@
   "d1165620af": {
     "translation": "Lock view and sketch"
   },
-  "d176108be4": {
-    "translation": "Converting: fetching"
-  },
   "d3d2e61733": {
     "translation": "Close"
-  },
-  "d41751d7fb": {
-    "translation": "Converting: saving"
   },
   "d46632fe1f": {
     "translation": "Too many requests. Please slow down."
@@ -743,9 +740,6 @@
   },
   "d638a3344b": {
     "translation": "Before you start, please accept our <tos>terms of use</tos> and <privacy>privacy policy</privacy>."
-  },
-  "d670c4f614": {
-    "translation": "Conversion failed: {error}"
   },
   "d721757161": {
     "translation": "Theme"
@@ -810,9 +804,6 @@
   "ea4788705e": {
     "translation": "Cancel"
   },
-  "eab2150e8e": {
-    "translation": "Converting: optimizing"
-  },
   "eab7fe1e2a": {
     "translation": "Could not save the view"
   },
@@ -876,8 +867,14 @@
   "f5ddc8d9c1": {
     "translation": "For now, you can <a>export as a {extension} file</a> to use it here."
   },
+  "f61cd880f1": {
+    "translation": "Reading the model"
+  },
   "f6d4a17b27": {
     "translation": "Pan"
+  },
+  "f88d81f30c": {
+    "translation": "Converting"
   },
   "fa2ead697d": {
     "translation": "Privacy Policy"
@@ -893,6 +890,9 @@
   },
   "fde5639174": {
     "translation": "Preparing the model…"
+  },
+  "fe43b0c148": {
+    "translation": "Preparing preview"
   },
   "fed5ec05eb": {
     "translation": "Copied link"

@@ -5,7 +5,7 @@ import {
 	model3dShapeMigrations,
 	model3dShapeProps,
 } from '@tldraw/dotcom-shared'
-import { PointerEventHandler, ReactNode, useCallback, useEffect, useState } from 'react'
+import { PointerEventHandler, useCallback, useEffect, useState } from 'react'
 import {
 	BaseBoxShapeUtil,
 	FileHelpers,
@@ -117,7 +117,7 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	const msg = useTranslation()
 	const getToken = useModel3dGetToken()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
-	const showControls = useValue(
+	const isActive = useValue(
 		'model controls',
 		() =>
 			editor.getHoveredShapeId() === shape.id || editor.getSelectedShapeIds().includes(shape.id),
@@ -166,17 +166,15 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 
 	if (localUpload) {
 		return localUpload.status === 'failed' ? (
-			<Card name={name}>
-				<span className={styles.error}>
-					{msg(messages.uploadFailed, { error: localUpload.error ?? '' })}
-				</span>
-				<CardButton onClick={() => retryModel3dUpload(shape.id)}>{msg(messages.retry)}</CardButton>
-			</Card>
+			<Status
+				name={name}
+				tone="error"
+				label={msg(messages.uploadFailed)}
+				detail={localUpload.error}
+				action={{ label: msg(messages.retry), onClick: () => retryModel3dUpload(shape.id) }}
+			/>
 		) : (
-			<Card name={name}>
-				<span>{msg(messages.uploading)}</span>
-				<Progress value={localUpload.progress} />
-			</Card>
+			<Status name={name} label={msg(messages.uploading)} progress={localUpload.progress} />
 		)
 	}
 
@@ -184,31 +182,25 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	// reload or an undo of the shape's deletion, would otherwise read "Uploading" for good.
 	if (!isUploadingHere && (!modelId || status?.status === 'uploading')) {
 		return (
-			<Card name={name}>
-				<span className={styles.error}>{msg(messages.uploadInterrupted)}</span>
-				{!isReadonly && (
-					<CardButton onClick={() => editor.deleteShapes([shape.id])}>
-						{msg(messages.remove)}
-					</CardButton>
-				)}
-			</Card>
+			<Status
+				name={name}
+				tone="error"
+				label={msg(messages.uploadInterrupted)}
+				action={
+					isReadonly
+						? undefined
+						: { label: msg(messages.remove), onClick: () => editor.deleteShapes([shape.id]) }
+				}
+			/>
 		)
 	}
 
 	if (snapshot.kind === 'forbidden') {
-		return (
-			<Card name={altText || msg(messages.model)}>
-				<span>{msg(messages.noAccess)}</span>
-			</Card>
-		)
+		return <Status name={altText || msg(messages.model)} label={msg(messages.noAccessShort)} />
 	}
 
 	if (snapshot.kind === 'not_found') {
-		return (
-			<Card name={name}>
-				<span className={styles.error}>{msg(messages.notFound)}</span>
-			</Card>
-		)
+		return <Status name={name} tone="error" label={msg(messages.notFound)} />
 	}
 
 	if (status?.status === 'failed') {
@@ -216,19 +208,19 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		const errorMessage =
 			errorCode && Object.hasOwn(model3dErrorMessages, errorCode)
 				? msg(model3dErrorMessages[errorCode])
-				: (errorCode ?? '')
+				: errorCode
 		return (
-			<Card name={name}>
-				<span className={styles.error}>
-					{msg(messages.conversionFailed, { error: errorMessage })}
-				</span>
-				{retryError && (
-					<span className={styles.error}>{msg(messages.retryFailed, { error: retryError })}</span>
-				)}
-				{!isReadonly && RETRYABLE_ERRORS.has(errorCode) && (
-					<CardButton onClick={retryConversion}>{msg(messages.retry)}</CardButton>
-				)}
-			</Card>
+			<Status
+				name={name}
+				tone="error"
+				label={msg(messages.conversionFailed)}
+				detail={retryError ? msg(messages.retryFailed, { error: retryError }) : errorMessage}
+				action={
+					!isReadonly && RETRYABLE_ERRORS.has(errorCode)
+						? { label: msg(messages.retry), onClick: retryConversion }
+						: undefined
+				}
+			/>
 		)
 	}
 
@@ -241,25 +233,26 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 					: messages.waiting
 		)
 		return (
-			<Card name={name}>
-				<span>{label}</span>
-				{status.status === 'converting' && <Progress value={status.progress} />}
-			</Card>
+			<Status
+				name={name}
+				label={label}
+				progress={status.status === 'converting' ? status.progress : undefined}
+			/>
 		)
 	}
 
-	const isReady = status?.status === 'ready'
+	if (!thumbnailUrl) {
+		return snapshot.kind === 'error' ? (
+			<Status name={name} tone="error" label={snapshot.message} />
+		) : (
+			<Status name={name} label={msg(ready ? messages.preparingPreview : messages.loadingStatus)} />
+		)
+	}
+
 	return (
-		<div className={styles.model} data-active={showControls}>
-			{!thumbnailUrl && <div className={styles.name}>{name}</div>}
-			{thumbnailUrl ? (
-				<img className={styles.thumbnail} src={thumbnailUrl} alt={altText} draggable={false} />
-			) : status?.manifest ? (
-				<span>{msg(messages.triangles, { count: status.manifest.triangleCount })}</span>
-			) : snapshot.kind === 'error' ? (
-				<span className={styles.error}>{snapshot.message}</span>
-			) : null}
-			{isReady && (
+		<div className={styles.model}>
+			<img className={styles.image} src={thumbnailUrl} alt={altText} draggable={false} />
+			{ready && isActive && (
 				<PlayButton
 					label={msg(messages.openIn3d)}
 					onPlay={() => openModel3dViewer(editor, shape.id)}
@@ -269,19 +262,42 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	)
 }
 
-function Card({ name, children }: { name: string | null; children: ReactNode }) {
+/** A quiet inline line of status in place of the model image; the shape has no chrome of its own. */
+function Status({
+	name,
+	label,
+	tone = 'normal',
+	detail,
+	progress,
+	action,
+}: {
+	name: string
+	label: string
+	tone?: 'normal' | 'error'
+	detail?: string | null
+	progress?: number
+	action?: { label: string; onClick(): void }
+}) {
+	const markAsHandled = useMarkAsHandled()
 	return (
-		<div className={styles.card} style={{ width: '100%', height: '100%' }}>
-			{name && <div className={styles.name}>{name}</div>}
-			{children}
-		</div>
-	)
-}
-
-function Progress({ value }: { value: number }) {
-	return (
-		<div className={styles.progress}>
-			<div className={styles.progressFill} style={{ width: `${Math.round(value * 100)}%` }} />
+		<div className={styles.status} data-tone={tone} title={name}>
+			<span className={styles.statusLabel}>{label}</span>
+			{progress !== undefined && (
+				<span className={styles.progress}>
+					<span style={{ width: `${Math.round(progress * 100)}%` }} />
+				</span>
+			)}
+			{detail && <span className={styles.statusDetail}>{detail}</span>}
+			{action && (
+				<button
+					className={styles.statusAction}
+					onPointerDown={markAsHandled}
+					onPointerUp={markAsHandled}
+					onClick={action.onClick}
+				>
+					{action.label}
+				</button>
+			)}
 		</div>
 	)
 }
@@ -298,20 +314,6 @@ function useMarkAsHandled() {
 	)
 }
 
-function CardButton({ onClick, children }: { onClick(): void; children: ReactNode }) {
-	const markAsHandled = useMarkAsHandled()
-	return (
-		<button
-			className={styles.cardButton}
-			onPointerDown={markAsHandled}
-			onPointerUp={markAsHandled}
-			onClick={onClick}
-		>
-			{children}
-		</button>
-	)
-}
-
 function PlayButton({ label, onPlay }: { label: string; onPlay(): void }) {
 	const markAsHandled = useMarkAsHandled()
 	return (
@@ -323,7 +325,7 @@ function PlayButton({ label, onPlay }: { label: string; onPlay(): void }) {
 			onPointerUp={markAsHandled}
 			onClick={onPlay}
 		>
-			<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+			<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
 				<path d="M4 2.5v11l9-5.5z" fill="currentColor" />
 			</svg>
 		</button>

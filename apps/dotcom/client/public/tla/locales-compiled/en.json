@@ -87,16 +87,6 @@
       "value": "You have reached the maximum number of workspaces. You need to delete old workspaces before creating new ones."
     }
   ],
-  "065918e2c8": [
-    {
-      "type": 0,
-      "value": "Upload failed: "
-    },
-    {
-      "type": 1,
-      "value": "error"
-    }
-  ],
   "06b9281e39": [
     {
       "type": 0,
@@ -219,10 +209,22 @@
       "value": "Notification options"
     }
   ],
+  "16bfbf9c46": [
+    {
+      "type": 0,
+      "value": "Loading"
+    }
+  ],
   "181b90f889": [
     {
       "type": 0,
       "value": "Create file"
+    }
+  ],
+  "19af319f85": [
+    {
+      "type": 0,
+      "value": "Optimizing"
     }
   ],
   "1da2e8106b": [
@@ -482,12 +484,6 @@
       "value": "Contact the owner to request access."
     }
   ],
-  "43c14d3ed9": [
-    {
-      "type": 0,
-      "value": "Converting: parsing"
-    }
-  ],
   "44db318ee5": [
     {
       "type": 0,
@@ -560,6 +556,12 @@
     {
       "type": 0,
       "value": "Republish"
+    }
+  ],
+  "4e11db406c": [
+    {
+      "type": 0,
+      "value": "Saving"
     }
   ],
   "5097d89907": [
@@ -688,12 +690,6 @@
     {
       "type": 0,
       "value": " reacted to your comment"
-    }
-  ],
-  "5c8474d17f": [
-    {
-      "type": 0,
-      "value": "Upload interrupted. Drop the file again."
     }
   ],
   "5d04a002ea": [
@@ -855,6 +851,12 @@
     {
       "type": 0,
       "value": "Help"
+    }
+  ],
+  "6b192cb554": [
+    {
+      "type": 0,
+      "value": "Upload interrupted"
     }
   ],
   "6bc9ee7c6b": [
@@ -1465,17 +1467,6 @@
       "value": "Could not save the default view. Try again."
     }
   ],
-  "acbb8a36e0": [
-    {
-      "style": null,
-      "type": 2,
-      "value": "count"
-    },
-    {
-      "type": 0,
-      "value": " triangles"
-    }
-  ],
   "af3dc88931": [
     {
       "type": 0,
@@ -1584,6 +1575,12 @@
     {
       "type": 0,
       "value": "Copy link"
+    }
+  ],
+  "b8d0eb5b8b": [
+    {
+      "type": 0,
+      "value": "Conversion failed"
     }
   ],
   "ba0318cb81": [
@@ -1844,22 +1841,10 @@
       "value": "Lock view and sketch"
     }
   ],
-  "d176108be4": [
-    {
-      "type": 0,
-      "value": "Converting: fetching"
-    }
-  ],
   "d3d2e61733": [
     {
       "type": 0,
       "value": "Close"
-    }
-  ],
-  "d41751d7fb": [
-    {
-      "type": 0,
-      "value": "Converting: saving"
     }
   ],
   "d46632fe1f": [
@@ -1906,16 +1891,6 @@
     {
       "type": 0,
       "value": "."
-    }
-  ],
-  "d670c4f614": [
-    {
-      "type": 0,
-      "value": "Conversion failed: "
-    },
-    {
-      "type": 1,
-      "value": "error"
     }
   ],
   "d721757161": [
@@ -2070,12 +2045,6 @@
     {
       "type": 0,
       "value": "Cancel"
-    }
-  ],
-  "eab2150e8e": [
-    {
-      "type": 0,
-      "value": "Converting: optimizing"
     }
   ],
   "eab7fe1e2a": [
@@ -2298,10 +2267,22 @@
       "value": " to use it here."
     }
   ],
+  "f61cd880f1": [
+    {
+      "type": 0,
+      "value": "Reading the model"
+    }
+  ],
   "f6d4a17b27": [
     {
       "type": 0,
       "value": "Pan"
+    }
+  ],
+  "f88d81f30c": [
+    {
+      "type": 0,
+      "value": "Converting"
     }
   ],
   "fa2ead697d": [
@@ -2332,6 +2313,12 @@
     {
       "type": 0,
       "value": "Preparing the model…"
+    }
+  ],
+  "fe43b0c148": [
+    {
+      "type": 0,
+      "value": "Preparing preview"
     }
   ],
   "fed5ec05eb": [

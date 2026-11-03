@@ -14,7 +14,7 @@ Decided 2026-11-02 by the owner: Weave is a solo local project with no users. Th
 4. Upload goes from the browser through the sync worker into the R2 binding's multipart API. No presigned URLs.
 5. The converter is a Node service, `apps/dotcom/model-converter`, on localhost, started by `process-compose.yaml`. The worker posts a job to it. The converter pulls the source and pushes `model.glb` and `manifest.json` back through worker routes authorized by an HMAC job token (WebCrypto, no package), and reports stage, progress and the terminal state. IFC goes through web-ifc. STL is parsed natively. OBJ and GLB go straight to gltfpack. A small native GLB writer feeds gltfpack. One job at a time, each in a child process so a crash cannot take the service down.
 6. Access is membership in the model's owning workspace, checked with the existing role helpers. The GLB is fetched with the user's bearer token. A shape pasted into another workspace renders the no-access placeholder.
-7. Thumbnails are captured by the viewer and uploaded through the normal tldraw image asset path, which sets the shape's `assetId`. No backend thumbnail route.
+7. Thumbnails are captured by the viewer and uploaded through the normal tldraw image asset path, which sets the shape's `assetId`. No backend thumbnail route. The capture is the `defaultView` camera (or a fit when there is none) on a transparent background, trimmed to the model, and the shape takes the image's aspect so it renders like an image shape. Set as default view re-captures and replaces `assetId`.
 8. Revisions live in the board document only. No `revision` table, no publish lease, no overlay object in R2. A `model3d-revision` shape holds the snapshot asset, the camera pose and the viewport, and its children are the strokes. Publishing sets `publishedAt` and `strokeHash` and locks the stroke children. The viewer lists the revision shapes for the model on the current board and renders the overlay by exporting the revision's children with `editor.toImage`, cached by `strokeHash`.
 9. Camera: per-user last view in localStorage, shared `defaultView` in the shape props.
 10. Tests only where the logic is pure and cheap: the GLB writer, the STL parser, upload part planning, the job token, `strokeHash`. One manual check script per stage. No e2e until the flow is complete.
@@ -22,26 +22,26 @@ Decided 2026-11-02 by the owner: Weave is a solo local project with no users. Th
 
 Stages, each a commit series on the integration branch, each reviewed before the next starts:
 
-| Stage | Content |
-| --- | --- |
+| Stage            | Content                                                                                                                                                                                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1, core baseline | Shared `model3d` module in dotcom-shared (shape props and migrations, manifest type, API types, job token helpers), schema registration at every server and client site, placeholder shape utils, overlay mount and hidden-shapes atom in `TlaEditor`, migration 054 |
-| 2a, backend | Sync worker model routes, `MODELS` binding, converter service, process-compose entry |
-| 2b, viewer | Drop handler, uploader, `model3d` shape, three.js overlay, thumbnails, camera persistence |
-| 3, revisions | Lock, sketch, publish, revision overlay in the viewer |
-| 4, hardening | Fixes from the milestone reviews, failure states, one e2e scenario |
+| 2a, backend      | Sync worker model routes, `MODELS` binding, converter service, process-compose entry                                                                                                                                                                                 |
+| 2b, viewer       | Drop handler, uploader, `model3d` shape, three.js overlay, thumbnails, camera persistence                                                                                                                                                                            |
+| 3, revisions     | Lock, sketch, publish, revision overlay in the viewer                                                                                                                                                                                                                |
+| 4, hardening     | Fixes from the milestone reviews, failure states, one e2e scenario                                                                                                                                                                                                   |
 
 ## How the work is split
 
 Six lanes. Each lane is one git worktree, one branch, one owner (an engineer or an agent thread), and a series of small pull requests into one integration branch, `feat/3d-review-board`.
 
-| Lane | Name | Area | Runs in |
-| --- | --- | --- | --- |
-| A | Contracts and plumbing | `packages/dotcom-shared`, schema registration, migration, flag, fixture worker | week 1 |
-| B | Model shape and viewer | `model3d` shape, drop handler, three.js overlay, thumbnails, uploader client | weeks 2 to 5 |
-| C | Model worker | upload signing, conversion control, manifest and GLB serving, grants, leases, sweeps | weeks 2 to 6 |
-| D | Converter image | Docker image with the job API, IFC, GLB, OBJ, STL pipelines, the spike | weeks 1 to 7 |
-| E | Revision shape and publish | `model3d-revision` shape, sketch mode, frozen export, publish, recovery | weeks 3 to 5 |
-| F | Permissions and acceptance | capability checks, link guest rule, failure states, e2e, user manual | weeks 6 to 8 |
+| Lane | Name                       | Area                                                                                 | Runs in      |
+| ---- | -------------------------- | ------------------------------------------------------------------------------------ | ------------ |
+| A    | Contracts and plumbing     | `packages/dotcom-shared`, schema registration, migration, flag, fixture worker       | week 1       |
+| B    | Model shape and viewer     | `model3d` shape, drop handler, three.js overlay, thumbnails, uploader client         | weeks 2 to 5 |
+| C    | Model worker               | upload signing, conversion control, manifest and GLB serving, grants, leases, sweeps | weeks 2 to 6 |
+| D    | Converter image            | Docker image with the job API, IFC, GLB, OBJ, STL pipelines, the spike               | weeks 1 to 7 |
+| E    | Revision shape and publish | `model3d-revision` shape, sketch mode, frozen export, publish, recovery              | weeks 3 to 5 |
+| F    | Permissions and acceptance | capability checks, link guest rule, failure states, e2e, user manual                 | weeks 6 to 8 |
 
 Four rules keep the lanes apart:
 
@@ -54,16 +54,16 @@ Each lane section below is written so it can be pasted as a brief to an engineer
 
 ## Timeline
 
-| Week | Active lanes | Milestone |
-| --- | --- | --- |
-| 1 | A, D | Contracts frozen, fixture worker boots, spike numbers, runner decided, owner decisions 1, 4 and 5 recorded |
-| 2 | B, C, D | Real upload path and viewer against the fixture worker |
-| 3 | B, C, D, E | Checkpoint 1: drop, upload, convert, thumbnail, orbit, on a preview deploy |
-| 4 | B, C, E, D | Lease endpoints, sketch mode, frozen export |
-| 5 | B, C, E | Checkpoint 2: publish round trip survives reload, disconnect and a second client |
-| 6 | C, D, F | IFC conversion in staging on the chosen runner |
-| 7 | D, F | Permissions, failure states, e2e scenario, OBJ and STL if lane D is done |
-| 8 | F | Checkpoint 3: acceptance on three customer files, flag on for the pilot workspace |
+| Week | Active lanes | Milestone                                                                                                  |
+| ---- | ------------ | ---------------------------------------------------------------------------------------------------------- |
+| 1    | A, D         | Contracts frozen, fixture worker boots, spike numbers, runner decided, owner decisions 1, 4 and 5 recorded |
+| 2    | B, C, D      | Real upload path and viewer against the fixture worker                                                     |
+| 3    | B, C, D, E   | Checkpoint 1: drop, upload, convert, thumbnail, orbit, on a preview deploy                                 |
+| 4    | B, C, E, D   | Lease endpoints, sketch mode, frozen export                                                                |
+| 5    | B, C, E      | Checkpoint 2: publish round trip survives reload, disconnect and a second client                           |
+| 6    | C, D, F      | IFC conversion in staging on the chosen runner                                                             |
+| 7    | D, F         | Permissions, failure states, e2e scenario, OBJ and STL if lane D is done                                   |
+| 8    | F            | Checkpoint 3: acceptance on three customer files, flag on for the pilot workspace                          |
 
 ## Phase 0, week 1: contracts, skeletons, spike
 
@@ -271,24 +271,24 @@ The flag turns on for the pilot workspace. Exit criteria: the e2e scenario is gr
 
 ## Shared files and their owners
 
-| Path | Owner | Others may |
-| --- | --- | --- |
-| `packages/dotcom-shared/src/model3d/**` | A | request a change |
-| `packages/dotcom-shared/src/{tlaSchema,queries,capabilities,roles,index}.ts` | A | nothing |
-| `apps/dotcom/zero-cache/migrations/*` | A for 054, integration owner after | nothing |
-| `apps/dotcom/client/src/utils/dotcomShapeUtils.ts` | A | nothing; placeholders already import the final class names |
-| `apps/dotcom/client/src/tla/components/TlaEditor/TlaEditor.tsx` | A | nothing; B and E work inside `tla/model3d/` |
-| `TlaFileSyncHost.tsx`, `TlaPublishEditor.tsx`, `TlaLegacySnapshotEditor.tsx`, `TlaLegacyFileEditor.tsx`, `thumbnail-render.tsx`, `TldrawApp.ts`, `importFromUrl.ts` | A | nothing |
-| `apps/dotcom/client/src/tla/model3d/{overlay,visibility,Model3dShapeUtil,Model3dRevisionShapeUtil}.tsx` | A creates, then B owns the first three, E the last | as listed |
-| `.../sneaky/SneakyFileDropHandler.tsx`, `useFileEditorOverrides.ts`, `utils/csp.ts`, client `package.json` | B | E adds one action to the overrides in phase 2 |
-| `apps/dotcom/sync-worker/src/{TLFileDurableObject,utils/validateSnapshot,routes/tla/createFiles}.ts` | A | nothing |
-| `apps/dotcom/sync-worker/src/worker.ts` RPC methods, `src/modelAccess.ts` | C | nothing |
-| `apps/dotcom/model-worker/**` | A for the skeleton, then C | B and E read only |
-| `apps/dotcom/model-converter/**` | D | C reads the job API |
-| `apps/dotcom/process-compose.yaml` | A | nothing |
-| `internal/scripts/deploy-dotcom.ts` | C | nothing |
-| `apps/dotcom/client/e2e/**` | F | nothing |
-| `apps/dotcom/3d-review-board.md` decisions section | integration owner | nothing |
+| Path                                                                                                                                                                | Owner                                              | Others may                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| `packages/dotcom-shared/src/model3d/**`                                                                                                                             | A                                                  | request a change                                           |
+| `packages/dotcom-shared/src/{tlaSchema,queries,capabilities,roles,index}.ts`                                                                                        | A                                                  | nothing                                                    |
+| `apps/dotcom/zero-cache/migrations/*`                                                                                                                               | A for 054, integration owner after                 | nothing                                                    |
+| `apps/dotcom/client/src/utils/dotcomShapeUtils.ts`                                                                                                                  | A                                                  | nothing; placeholders already import the final class names |
+| `apps/dotcom/client/src/tla/components/TlaEditor/TlaEditor.tsx`                                                                                                     | A                                                  | nothing; B and E work inside `tla/model3d/`                |
+| `TlaFileSyncHost.tsx`, `TlaPublishEditor.tsx`, `TlaLegacySnapshotEditor.tsx`, `TlaLegacyFileEditor.tsx`, `thumbnail-render.tsx`, `TldrawApp.ts`, `importFromUrl.ts` | A                                                  | nothing                                                    |
+| `apps/dotcom/client/src/tla/model3d/{overlay,visibility,Model3dShapeUtil,Model3dRevisionShapeUtil}.tsx`                                                             | A creates, then B owns the first three, E the last | as listed                                                  |
+| `.../sneaky/SneakyFileDropHandler.tsx`, `useFileEditorOverrides.ts`, `utils/csp.ts`, client `package.json`                                                          | B                                                  | E adds one action to the overrides in phase 2              |
+| `apps/dotcom/sync-worker/src/{TLFileDurableObject,utils/validateSnapshot,routes/tla/createFiles}.ts`                                                                | A                                                  | nothing                                                    |
+| `apps/dotcom/sync-worker/src/worker.ts` RPC methods, `src/modelAccess.ts`                                                                                           | C                                                  | nothing                                                    |
+| `apps/dotcom/model-worker/**`                                                                                                                                       | A for the skeleton, then C                         | B and E read only                                          |
+| `apps/dotcom/model-converter/**`                                                                                                                                    | D                                                  | C reads the job API                                        |
+| `apps/dotcom/process-compose.yaml`                                                                                                                                  | A                                                  | nothing                                                    |
+| `internal/scripts/deploy-dotcom.ts`                                                                                                                                 | C                                                  | nothing                                                    |
+| `apps/dotcom/client/e2e/**`                                                                                                                                         | F                                                  | nothing                                                    |
+| `apps/dotcom/3d-review-board.md` decisions section                                                                                                                  | integration owner                                  | nothing                                                    |
 
 ## Running the lanes in parallel
 
@@ -335,22 +335,22 @@ Do not commit or push unless told to. Report in the five-part format from the pl
 
 With two engineers, the design's assumption:
 
-| Engineer | Week 1 | Weeks 2 to 3 | Weeks 4 to 5 | Weeks 6 to 8 |
-| --- | --- | --- | --- | --- |
-| 1 | A | B, then E export | E, B additions | F client side |
-| 2 | D | C, D | C leases, D | C and D production, F server side |
+| Engineer | Week 1 | Weeks 2 to 3     | Weeks 4 to 5   | Weeks 6 to 8                      |
+| -------- | ------ | ---------------- | -------------- | --------------------------------- |
+| 1        | A      | B, then E export | E, B additions | F client side                     |
+| 2        | D      | C, D             | C leases, D    | C and D production, F server side |
 
 With agents on each lane and the two engineers reviewing and integrating, every lane runs at once from week 2 and the calendar compresses to about five weeks; the week 1 gate and the three checkpoints stay as they are, because they depend on real files and real deploys, not on coding time.
 
 ## Decision deadlines
 
-| Decision | Blocks | Needed by |
-| --- | --- | --- |
-| 1, editor-only sketching | nothing if yes; if reviewers sketch at launch, lane A reopens for a week and lane C adds a policy endpoint | end of week 1 |
-| 2, link guests see models | lane C's manifest grant rule, lane F's toggle | end of week 3 |
-| 3, public snapshot copy | lane E step 2 bucket choice | end of week 3 |
-| 4, launch size limit | lane C's begin check, lane D's limits, lane B's rejection copy | end of week 1, from the spike |
-| 5, staffing | which column of the staffing table applies | now |
+| Decision                  | Blocks                                                                                                     | Needed by                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 1, editor-only sketching  | nothing if yes; if reviewers sketch at launch, lane A reopens for a week and lane C adds a policy endpoint | end of week 1                 |
+| 2, link guests see models | lane C's manifest grant rule, lane F's toggle                                                              | end of week 3                 |
+| 3, public snapshot copy   | lane E step 2 bucket choice                                                                                | end of week 3                 |
+| 4, launch size limit      | lane C's begin check, lane D's limits, lane B's rejection copy                                             | end of week 1, from the spike |
+| 5, staffing               | which column of the staffing table applies                                                                 | now                           |
 
 ## Risks that come from working in parallel
 
