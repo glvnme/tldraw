@@ -71,7 +71,8 @@ export function Model3dViewer({ state }: { state: Model3dViewerState }) {
 	useEffect(() => {
 		if (!isOrbit) return
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key !== 'Escape') return
+			// An open tldraw menu closes first.
+			if (e.key !== 'Escape' || editor.menus.hasAnyOpenMenus()) return
 			e.stopPropagation()
 			closeModel3dViewer(editor)
 		}
@@ -101,6 +102,9 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 	const editor = useEditor()
 	const msg = useTranslation()
 	const getToken = useModel3dGetToken()
+	// A token refresh must not tear down the loaded scene.
+	const rGetToken = useRef(getToken)
+	rGetToken.current = getToken
 	const userId = useTldrawCurrentUser()?.id ?? null
 	const snapshot = useModel3dStatus(modelId, getToken)
 	const isReady = snapshot.kind === 'ok' && snapshot.status.status === 'ready'
@@ -136,7 +140,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 			try {
 				const [{ createModel3dViewerEngine }, token] = await Promise.all([
 					import('./viewerEngine'),
-					getToken(),
+					rGetToken.current(),
 				])
 				if (signal.aborted) return
 				const defaultView = editor.getShape<TLModel3dShape>(shapeId)?.props.defaultView ?? null
@@ -183,7 +187,7 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 			created.dispose()
 			setEngine(null)
 		}
-	}, [editor, shapeId, modelId, isReady, attempt, getToken, userId])
+	}, [editor, shapeId, modelId, isReady, attempt, userId])
 
 	const setDefaultView = async () => {
 		const signal = rAbort.current?.signal
@@ -277,7 +281,8 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 						<IslandButton
 							icon="bookmark"
 							label={msg(messages.setDefaultView)}
-							disabled={!engine || isBusy}
+							// A shown view letterboxes the canvas, which the capture would keep as the default framing.
+							disabled={!engine || isBusy || !!letterbox}
 							onClick={setDefaultView}
 						/>
 						<IslandButton

@@ -52,7 +52,6 @@ import { useNewRoomCreationTracking } from '../../hooks/useNewRoomCreationTracki
 import { useShareLinkOpenTracking } from '../../hooks/useShareLinkOpenTracking'
 import { useTldrawCurrentUser } from '../../hooks/useUser'
 import { Model3dContextMenu } from '../../model3d/contextMenu'
-import { Model3dDebugMenuItems } from '../../model3d/debug'
 import { Model3dOverlayMount } from '../../model3d/overlay'
 import { getModel3dShapeVisibility } from '../../model3d/visibility'
 import { maybeSlurp } from '../../utils/slurping'
@@ -424,7 +423,6 @@ function CustomDebugMenu() {
 					}}
 				/>
 			)}
-			{app && <Model3dDebugMenuItems />}
 			<DefaultDebugMenuContent customDebugFlags={DOTCOM_DEBUG_FLAGS} />
 		</DefaultDebugMenu>
 	)

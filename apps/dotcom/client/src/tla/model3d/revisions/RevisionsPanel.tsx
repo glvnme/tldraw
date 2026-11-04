@@ -5,12 +5,11 @@ import { Model3dRevisionEditBadge } from '../Model3dRevisionShapeUtil'
 import { isCameraAtPose } from './cameraMatch'
 import { Model3dRect, letterbox } from './layout'
 import { revisionMessages as messages } from './messages'
-import { getModel3dRevisionOverlayUrl } from './overlayImage'
+import { getModel3dRevisionOverlayKey, getModel3dRevisionOverlayUrl } from './overlayImage'
 import {
 	getModel3dRevision,
 	getModel3dRevisionView,
 	getModel3dRevisions,
-	getRevisionContentKey,
 	showModel3dRevision,
 } from './state'
 import styles from './revisions.module.css'
@@ -73,10 +72,10 @@ export function Model3dRevisionsPanel({
 	const rect = useModel3dRevisionLetterbox(modelId)
 	const [camera, setCamera] = useState(() => handle.getCamera())
 	const [overlay, setOverlay] = useState<{ revisionId: string; url: string } | null>(null)
-	// Re-exports when the content changes, from this tab or any other.
+	// Re-exports when the content changes, from this tab or any other, or the theme changes.
 	const content = useValue(
 		'model3d revision content',
-		() => (revision ? getRevisionContentKey(editor, revision.id) : null),
+		() => (revision ? getModel3dRevisionOverlayKey(editor, revision.id) : null),
 		[editor, revision?.id]
 	)
 

@@ -32,6 +32,7 @@ import { useIsCommentingEnabled } from '../../hooks/useIsCommentingEnabled'
 import { useAddModel3dFiles } from '../../model3d/drop'
 import { model3dMessages } from '../../model3d/messages'
 import { pickModel3dFiles } from '../../model3d/pickFiles'
+import { getModel3dSketchSession } from '../../model3d/sketch/session'
 import { useTldrawAppUiEvents } from '../../utils/app-ui-events'
 import { TlaSignInDialog } from '../dialogs/TlaSignInDialog'
 import { TlaCtaButton } from '../TlaCtaButton/TlaCtaButton'
@@ -127,8 +128,11 @@ function Model3dUploadButton() {
 	const editor = useEditor()
 	const addModel3dFiles = useAddModel3dFiles()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
+	const isSketching = useValue('model3d sketching', () => !!getModel3dSketchSession(editor).get(), [
+		editor,
+	])
 
-	if (isReadonly) return null
+	if (isReadonly || isSketching) return null
 
 	return (
 		<TlaCtaButton

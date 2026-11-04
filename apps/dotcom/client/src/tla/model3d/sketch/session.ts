@@ -201,6 +201,17 @@ export function exitModel3dSketch(editor: Editor) {
 	})
 	clearModel3dSketchRecovery(editor)
 	editor.selectNone()
+	// An unpublished draft with nothing drawn on it is only a snapshot, so leaving drops it.
+	// Not marked, so one undo takes back both its creation and this.
+	const draft = getModel3dRevision(editor, session.revisionId)
+	if (
+		draft &&
+		!draft.props.publishedAt &&
+		!editor.getIsReadonly() &&
+		editor.getSortedChildIdsForParent(draft.id).length === 0
+	) {
+		editor.deleteShapes([draft.id])
+	}
 
 	const viewer = getModel3dViewerState(editor).get()
 	if (viewer?.mode !== 'sketch') return

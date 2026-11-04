@@ -51,6 +51,10 @@ export function registerModel3dEditorRules(editor: Editor) {
 				? keepAssignedProps(prev.props as AssignedProps, next)
 				: next
 		),
+		// Back in the store, from history or a remote: nothing left to remember.
+		sideEffects.registerAfterCreateHandler('shape', (shape) => {
+			deletedProps.delete(shape.id)
+		}),
 		sideEffects.registerAfterDeleteHandler('shape', (shape) => {
 			if (!ASSIGNED_PROPS[shape.type]) return
 			deletedProps.set(shape.id, { ...shape.props })

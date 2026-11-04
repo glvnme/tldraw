@@ -9,6 +9,15 @@ interface OverlayCache {
 
 const overlayCaches = new WeakCache<Editor, OverlayCache>()
 
+/**
+ * The revision's content plus the theme: strokes keep their theme colours in the export, so ink
+ * exported in light mode is near black on the dark viewer.
+ */
+export function getModel3dRevisionOverlayKey(editor: Editor, revisionId: TLShapeId) {
+	const theme = editor.user.getIsDarkMode() ? 'dark' : 'light'
+	return `${theme}:${getRevisionContentKey(editor, revisionId)}`
+}
+
 function getCache(editor: Editor) {
 	return overlayCaches.get(editor, () => ({ exports: new Map(), urls: new Map() }))
 }
@@ -24,7 +33,7 @@ export function getModel3dRevisionOverlayUrl(editor: Editor, revisionId: TLShape
 	const revision = getModel3dRevision(editor, revisionId)
 	if (!revision) return Promise.reject(new Error('Revision not found'))
 	const { exports, urls } = getCache(editor)
-	const key = getRevisionContentKey(editor, revisionId)
+	const key = getModel3dRevisionOverlayKey(editor, revisionId)
 	const cached = exports.get(revisionId)
 	if (cached?.key === key) return cached.url
 
@@ -36,12 +45,12 @@ export function getModel3dRevisionOverlayUrl(editor: Editor, revisionId: TLShape
 				background: false,
 				padding: 0,
 				pixelRatio: revision.props.viewport.dpr,
-				darkMode: false,
+				darkMode: key.startsWith('dark:'),
 			})
 			.then(({ blob }) => {
 				// `toImage` renders the store as it is when it gets to it, not as it was keyed.
 				if (exports.get(revisionId) !== entry) return null
-				if (getRevisionContentKey(editor, revisionId) !== key) return null
+				if (getModel3dRevisionOverlayKey(editor, revisionId) !== key) return null
 				const url = URL.createObjectURL(blob)
 				const replaced = urls.get(revisionId)
 				if (replaced) URL.revokeObjectURL(replaced)
