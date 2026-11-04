@@ -12,6 +12,7 @@ function status(s: GetModelStatusResponse['status']): GetModelStatusResponse {
 		progress: 0,
 		errorCode: null,
 		manifest: null,
+		updatedAt: 0,
 	}
 }
 
@@ -80,6 +81,18 @@ describe('Model3dStatusPoller', () => {
 		await vi.advanceTimersByTimeAsync(MODEL3D_POLL_INTERVAL_MS * 3)
 		expect(fetchStatus).toHaveBeenCalledTimes(1)
 		expect(listener).toHaveBeenLastCalledWith({ kind: 'forbidden' })
+	})
+
+	it('stops on 401 with an error snapshot', async () => {
+		const fetchStatus = vi.fn(async () => {
+			throw new Model3dApiError(401, 'unauthorized', 'unauthorized')
+		})
+		const poller = new Model3dStatusPoller(fetchStatus)
+		const listener = vi.fn()
+		poller.subscribe('m1', getToken, listener)
+		await vi.advanceTimersByTimeAsync(MODEL3D_POLL_INTERVAL_MS * 3)
+		expect(fetchStatus).toHaveBeenCalledTimes(1)
+		expect(listener).toHaveBeenLastCalledWith({ kind: 'error', message: 'unauthorized' })
 	})
 
 	it('refresh restarts a stopped loop', async () => {

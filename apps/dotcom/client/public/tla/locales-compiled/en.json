@@ -612,6 +612,12 @@
       "value": "Unread"
     }
   ],
+  "540a26fed3": [
+    {
+      "type": 0,
+      "value": "Use a GLB, OBJ, STL, IFC, or 3DM file."
+    }
+  ],
   "542248f0ba": [
     {
       "type": 0,
@@ -883,6 +889,12 @@
       "value": "Follow these steps to import the content manually:"
     }
   ],
+  "6e02b6e58e": [
+    {
+      "type": 0,
+      "value": "The file has almost no surfaces. Check that it holds the full model."
+    }
+  ],
   "70a6facb9d": [
     {
       "type": 0,
@@ -1015,6 +1027,12 @@
       "value": "Draco-compressed GLB is not supported. Export it without Draco."
     }
   ],
+  "7c7ae6a9eb": [
+    {
+      "type": 0,
+      "value": "Model view"
+    }
+  ],
   "7cb5f8b4a5": [
     {
       "type": 0,
@@ -1127,6 +1145,12 @@
     {
       "type": 0,
       "value": "You are already a member of this workspace"
+    }
+  ],
+  "8836e68e12": [
+    {
+      "type": 0,
+      "value": "No preview"
     }
   ],
   "88bf6ab42c": [

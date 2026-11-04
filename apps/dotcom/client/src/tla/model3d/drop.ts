@@ -55,6 +55,14 @@ export function addModel3dFiles(
 	}
 
 	const accepted = files.filter((file) => {
+		if (!isModel3dFile(file)) {
+			toasts.addToast({
+				severity: 'warning',
+				title: msg(messages.cantAdd, { name: file.name }),
+				description: msg(messages.unsupportedFile),
+			})
+			return false
+		}
 		if (file.size > 0 && file.size <= MODEL3D_MAX_SOURCE_BYTES) return true
 		toasts.addToast({
 			severity: 'warning',

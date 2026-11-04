@@ -12,8 +12,10 @@ export const model3dMessages = defineMessages({
 		defaultMessage: 'Some model parts are missing. In Rhino, use a Shaded viewport and save again.',
 	},
 	approximateModel: { defaultMessage: 'Some surfaces use an approximate mesh.' },
+	nearEmptyModel: {
+		defaultMessage: 'The file has almost no surfaces. Check that it holds the full model.',
+	},
 	assumedUnits: { defaultMessage: 'The file has no supported units. Millimetres were used.' },
-	remove: { defaultMessage: 'Remove' },
 	retry: { defaultMessage: 'Retry' },
 	noAccess: { defaultMessage: 'You don’t have access to this model.' },
 	noAccessShort: { defaultMessage: 'No access' },
@@ -28,6 +30,7 @@ export const model3dMessages = defineMessages({
 	loadingStatus: { defaultMessage: 'Loading' },
 	previewFailed: { defaultMessage: 'Could not prepare the preview.' },
 	preparingPreview: { defaultMessage: 'Preparing preview' },
+	noPreview: { defaultMessage: 'No preview' },
 	openIn3d: { defaultMessage: 'Open in 3D' },
 	close: { defaultMessage: 'Close' },
 	viewerTools: { defaultMessage: '3D view' },
@@ -46,6 +49,7 @@ export const model3dMessages = defineMessages({
 	cantAdd: { defaultMessage: 'Can’t add {name}' },
 	tooLarge: { defaultMessage: 'Models must be 1 GB or smaller.' },
 	empty: { defaultMessage: 'The file is empty.' },
+	unsupportedFile: { defaultMessage: 'Use a GLB, OBJ, STL, IFC, or 3DM file.' },
 })
 
 export const model3dErrorMessages = defineMessages({

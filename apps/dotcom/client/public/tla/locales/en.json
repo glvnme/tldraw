@@ -263,6 +263,9 @@
   "53770fd374": {
     "translation": "Unread"
   },
+  "540a26fed3": {
+    "translation": "Use a GLB, OBJ, STL, IFC, or 3DM file."
+  },
   "542248f0ba": {
     "translation": "This file is now read-only"
   },
@@ -377,6 +380,9 @@
   "6dfc62f621": {
     "translation": "Follow these steps to import the content manually:"
   },
+  "6e02b6e58e": {
+    "translation": "The file has almost no surfaces. Check that it holds the full model."
+  },
   "70a6facb9d": {
     "translation": "This week"
   },
@@ -443,6 +449,9 @@
   "7c4824e84e": {
     "translation": "Draco-compressed GLB is not supported. Export it without Draco."
   },
+  "7c7ae6a9eb": {
+    "translation": "Model view"
+  },
   "7cb5f8b4a5": {
     "translation": "Forget"
   },
@@ -478,6 +487,9 @@
   },
   "87fdb09de6": {
     "translation": "You are already a member of this workspace"
+  },
+  "8836e68e12": {
+    "translation": "No preview"
   },
   "88bf6ab42c": {
     "translation": "This invite link has expired"

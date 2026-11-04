@@ -76,10 +76,11 @@ export class Model3dStatusPoller {
 		if (!entry) return
 		entry.inFlight = true
 		let snapshot: Model3dStatusSnapshot
+		let status = 0
 		try {
 			snapshot = { kind: 'ok', status: await this.fetchStatus(modelId, entry.getToken) }
 		} catch (e) {
-			const status = e instanceof Model3dApiError ? e.status : 0
+			status = e instanceof Model3dApiError ? e.status : 0
 			snapshot =
 				status === 403
 					? { kind: 'forbidden' }
@@ -93,7 +94,8 @@ export class Model3dStatusPoller {
 		entry.snapshot = snapshot
 		for (const listener of entry.listeners) listener(snapshot)
 		if (snapshot.kind === 'ok' && MODEL3D_TERMINAL_STATUSES.includes(snapshot.status.status)) return
-		if (snapshot.kind === 'forbidden' || snapshot.kind === 'not_found') return
+		// Signed out: polling cannot succeed with this token. A new token resubscribes.
+		if (snapshot.kind === 'forbidden' || snapshot.kind === 'not_found' || status === 401) return
 		entry.timer = setTimeout(() => {
 			entry.timer = null
 			void this.poll(modelId)

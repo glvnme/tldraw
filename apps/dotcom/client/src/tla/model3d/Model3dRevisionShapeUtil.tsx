@@ -15,6 +15,7 @@ import {
 	TLShape,
 	TLShapePartial,
 	fetch,
+	translateMessage,
 	useEditor,
 	useImageOrVideoAsset,
 	useTranslation,
@@ -34,6 +35,10 @@ export class Model3dRevisionShapeUtil extends BaseFrameLikeShapeUtil<TLModel3dRe
 	static override type = MODEL3D_REVISION_SHAPE_TYPE
 	static override props = model3dRevisionShapeProps
 	static override migrations = model3dRevisionShapeMigrations
+
+	override getShapeName() {
+		return translateMessage(this.editor.i18n(), messages.name)
+	}
 
 	override getDefaultProps(): TLModel3dRevisionShape['props'] {
 		return {

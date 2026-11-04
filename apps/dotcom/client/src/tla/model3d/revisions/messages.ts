@@ -1,6 +1,7 @@
 import { defineMessages } from 'tldraw'
 
 export const revisionMessages = defineMessages({
+	name: { defaultMessage: 'Model view' },
 	lockAndSketch: { defaultMessage: 'Lock view and sketch' },
 	publishFailed: { defaultMessage: 'Could not publish the view. Try again.' },
 	publish: { defaultMessage: 'Publish' },

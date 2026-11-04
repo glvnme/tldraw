@@ -166,10 +166,19 @@
 .modelWarning {
 	position: absolute;
 	left: 6px;
-	right: 6px;
 	top: 6px;
-	padding: 4px 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
 	background: var(--tl-color-panel);
-	color: var(--tl-color-text-1);
-	font: 11px/1.35 var(--tl-font-sans);
+	color: var(--tl-color-warning);
+	box-shadow: var(--tl-shadow-2);
+	/* Constant on-screen size at any zoom, like the play button. */
+	transform: scale(var(--tl-scale));
+	transform-origin: top left;
+	/* For the title tooltip. The events still bubble to the canvas, so the shape can be dragged. */
+	pointer-events: all;
 }

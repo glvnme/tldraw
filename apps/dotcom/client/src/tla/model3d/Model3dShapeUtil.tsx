@@ -1,6 +1,6 @@
 import {
+	MODEL3D_RETRYABLE_ERRORS,
 	MODEL3D_SHAPE_TYPE,
-	Model3dErrorCode,
 	TLModel3dShape,
 	model3dShapeMigrations,
 	model3dShapeProps,
@@ -13,12 +13,14 @@ import {
 	fetch,
 	SvgExportContext,
 	TLShapePartial,
+	translateMessage,
 	useEditor,
 	useImageOrVideoAsset,
 	useTranslation,
 	useValue,
 } from 'tldraw'
 import { useCurrentFileId } from '../hooks/useCurrentFileId'
+import { Model3dApiError } from './api'
 import { model3dErrorMessages, model3dMessages as messages } from './messages'
 import { pickModel3dFiles } from './pickFiles'
 import { useModel3dStatus, model3dStatusPoller } from './status'
@@ -36,23 +38,15 @@ import { useModel3dGetToken } from './useModel3dGetToken'
 import { openModel3dViewer } from './viewerState'
 import styles from './model3d.module.css'
 
+// A tab that is uploading, or a server row that is still receiving parts, changes within this.
+const INTERRUPTED_AFTER_MS = 20_000
+
 const STAGE_MESSAGES = {
 	fetching: messages.fetching,
 	parsing: messages.parsing,
 	optimizing: messages.optimizing,
 	uploading: messages.saving,
 } as const
-
-// The rest are about the file itself, so the same source fails the same way again.
-const RETRYABLE_ERRORS: ReadonlySet<Model3dErrorCode | null> = new Set([
-	null,
-	'invalid_state',
-	'invalid_token',
-	'converter_unavailable',
-	'conversion_failed',
-	'conversion_timeout',
-	'internal_error',
-])
 
 export class Model3dShapeUtil extends BaseBoxShapeUtil<TLModel3dShape> {
 	static override type = MODEL3D_SHAPE_TYPE
@@ -69,6 +63,10 @@ export class Model3dShapeUtil extends BaseBoxShapeUtil<TLModel3dShape> {
 			defaultView: null,
 			altText: '',
 		}
+	}
+
+	override getShapeName() {
+		return translateMessage(this.editor.i18n(), messages.model)
 	}
 
 	override isAspectRatioLocked() {
@@ -177,30 +175,42 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	])
 
 	const [retryError, setRetryError] = useState<string | null>(null)
+	const [sourceError, setSourceError] = useState<string | null>(null)
+	// The server deleted the source, so only selecting the file again can convert it.
+	const [needsSource, setNeedsSource] = useState(false)
+	useEffect(() => {
+		setNeedsSource(false)
+		setRetryError(null)
+	}, [modelId])
 	const retryConversion = useCallback(async () => {
 		setRetryError(null)
+		setSourceError(null)
 		try {
 			await requeueModel3d(getToken, modelId)
 		} catch (e) {
-			setRetryError(e instanceof Error ? e.message : String(e))
+			if (e instanceof Model3dApiError && e.code === 'source_required') setNeedsSource(true)
+			else setRetryError(e instanceof Error ? e.message : String(e))
 		}
 		model3dStatusPoller.refresh(modelId)
 	}, [getToken, modelId])
 
 	const selectSource = useCallback(async () => {
 		if (editor.getIsReadonly()) return
-		const [file] = await pickModel3dFiles()
-		const format = file && getModel3dFormat(file.name)
+		setRetryError(null)
+		setSourceError(null)
+		const [file] = await pickModel3dFiles(editor.getContainerDocument())
 		if (
 			!file ||
-			!format ||
 			!fileId ||
 			editor.getIsReadonly() ||
 			editor.getShape<TLModel3dShape>(shape.id)?.props.modelId !== modelId
 		)
 			return
-		if (!file.size || file.size > MODEL3D_MAX_SOURCE_BYTES) {
-			setRetryError(msg(file.size ? messages.tooLarge : messages.empty))
+		const format = getModel3dFormat(file.name)
+		if (!format || !file.size || file.size > MODEL3D_MAX_SOURCE_BYTES) {
+			setSourceError(
+				msg(!format ? messages.unsupportedFile : file.size ? messages.tooLarge : messages.empty)
+			)
 			return
 		}
 		startModel3dUpload(shape.id, {
@@ -221,7 +231,8 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 						editor.updateShape<TLModel3dShape>({
 							id: shape.id,
 							type: MODEL3D_SHAPE_TYPE,
-							props: { modelId: newModelId, assetId: null, defaultView: null, altText: file.name },
+							// The default view is a camera, which still frames the same site after a re-upload.
+							props: { modelId: newModelId, assetId: null, altText: file.name },
 						}),
 					{ history: 'ignore', ignoreShapeLock: true }
 				)
@@ -231,6 +242,16 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 
 	const status = snapshot.kind === 'ok' ? snapshot.status : null
 	const name = status?.name || altText || msg(messages.model)
+	// Only the tab that holds the file can finish an upload, so one this tab does not hold, after a
+	// reload or an undo of the shape's deletion, would otherwise read "Uploading" for good. Another
+	// tab's live upload bumps `updatedAt` with every part, and a finished one leaves `uploading` at
+	// the next poll, so neither reads as interrupted.
+	const maybeInterrupted =
+		!localUpload && !isUploadingHere && (!modelId || status?.status === 'uploading')
+	const isInterrupted = useUnchangedFor(
+		maybeInterrupted ? `${modelId}:${status?.updatedAt ?? ''}` : null,
+		INTERRUPTED_AFTER_MS
+	)
 
 	if (localUpload) {
 		return localUpload.status === 'failed' ? (
@@ -246,22 +267,10 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		)
 	}
 
-	// Only the tab that holds the file can finish an upload, so one this tab does not hold, after a
-	// reload or an undo of the shape's deletion, would otherwise read "Uploading" for good.
-	if (!isUploadingHere && (!modelId || status?.status === 'uploading')) {
-		return (
-			<Status
-				name={name}
-				tone="error"
-				label={msg(messages.uploadInterrupted)}
-				action={
-					isReadonly
-						? undefined
-						: { label: msg(messages.remove), onClick: () => editor.deleteShapes([shape.id]) }
-				}
-			/>
-		)
+	if (isInterrupted) {
+		return <Status name={name} tone="error" label={msg(messages.uploadInterrupted)} />
 	}
+	if (!modelId) return <Status name={name} label={msg(messages.uploading)} />
 
 	if (snapshot.kind === 'forbidden') {
 		return <Status name={altText || msg(messages.model)} label={msg(messages.noAccessShort)} />
@@ -282,13 +291,22 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 				name={name}
 				tone="error"
 				label={msg(messages.conversionFailed)}
-				detail={retryError ? msg(messages.retryFailed, { error: retryError }) : errorMessage}
+				detail={
+					sourceError ??
+					(needsSource
+						? msg(model3dErrorMessages.source_required)
+						: retryError
+							? msg(messages.retryFailed, { error: retryError })
+							: errorMessage)
+				}
 				action={
-					!isReadonly && status.sourceFormat === '3dm'
-						? { label: msg(messages.chooseSource), onClick: selectSource }
-						: !isReadonly && RETRYABLE_ERRORS.has(errorCode)
+					isReadonly
+						? undefined
+						: MODEL3D_RETRYABLE_ERRORS.includes(errorCode) && !needsSource
 							? { label: msg(messages.retry), onClick: retryConversion }
-							: undefined
+							: status.sourceFormat === '3dm'
+								? { label: msg(messages.chooseSource), onClick: selectSource }
+								: undefined
 				}
 			/>
 		)
@@ -326,6 +344,19 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 				/>
 			)
 		}
+		// Only an editor can render and save the preview.
+		if (ready && isReadonly && !shape.props.assetId) {
+			return (
+				<Status
+					name={name}
+					label={msg(messages.noPreview)}
+					action={{
+						label: msg(messages.openIn3d),
+						onClick: () => openModel3dViewer(editor, shape.id),
+					}}
+				/>
+			)
+		}
 		return snapshot.kind === 'error' ? (
 			<Status name={name} tone="error" label={snapshot.message} />
 		) : (
@@ -333,23 +364,27 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		)
 	}
 
+	const warnings = status?.manifest?.version === 2 ? status.manifest.warnings : []
+	const has = (...codes: string[]) => warnings.some((w) => codes.includes(w.code))
+	const warning = [
+		has('missing_render_mesh', 'unsupported_entity', 'instance_depth_limit') &&
+			msg(messages.partialModel),
+		has('approximate_mesh') && msg(messages.approximateModel),
+		has('units_assumed') && msg(messages.assumedUnits),
+		has('near_empty') && msg(messages.nearEmptyModel),
+	]
+		.filter(Boolean)
+		.join(' ')
+
 	return (
 		<div className={styles.model}>
 			<img className={styles.image} src={thumbnailUrl} alt={altText} draggable={false} />
-			{status?.manifest?.version === 2 && status.manifest.warnings.length > 0 && (
-				<span className={styles.modelWarning}>
-					{msg(
-						status.manifest.warnings.some(
-							(warning) =>
-								warning.code === 'missing_render_mesh' ||
-								warning.code === 'unsupported_entity' ||
-								warning.code === 'instance_depth_limit'
-						)
-							? messages.partialModel
-							: status.manifest.warnings.some((warning) => warning.code === 'units_assumed')
-								? messages.assumedUnits
-								: messages.approximateModel
-					)}
+			{isActive && warning && (
+				<span className={styles.modelWarning} title={warning} role="img" aria-label={warning}>
+					<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+						<path d="M8 1.5 15 14H1z" fill="currentColor" />
+						<path d="M8 6v4M8 11.6v.4" stroke="var(--tl-color-panel)" strokeWidth="1.6" />
+					</svg>
 				</span>
 			)}
 			{ready && isActive && (
@@ -360,6 +395,17 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 			)}
 		</div>
 	)
+}
+
+/** True once `key` has been non-null and unchanged for `ms`. */
+function useUnchangedFor(key: string | null, ms: number) {
+	const [settled, setSettled] = useState<string | null>(null)
+	useEffect(() => {
+		if (key === null) return
+		const timer = setTimeout(() => setSettled(key), ms)
+		return () => clearTimeout(timer)
+	}, [key, ms])
+	return key !== null && settled === key
 }
 
 /** A quiet inline line of status in place of the model image; the shape has no chrome of its own. */

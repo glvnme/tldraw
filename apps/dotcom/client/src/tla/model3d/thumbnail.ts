@@ -122,6 +122,10 @@ export async function captureModel3dThumbnail(
 	signal.throwIfAborted()
 	const preview = await renderPreview(frame.blob)
 	signal.throwIfAborted()
+	// Another tab or the offscreen preview filled it meanwhile.
+	const hasNewerPreview = () =>
+		mode === 'initial' && !!editor.getShape<TLModel3dShape>(shapeId)?.props.assetId
+	if (hasNewerPreview()) return
 	const name = `${shape.props.altText || 'model'}-preview.webp`
 	const file = new File([preview.blob], name, { type: 'image/webp' })
 
@@ -141,6 +145,7 @@ export async function captureModel3dThumbnail(
 	}) as TLImageAsset
 	const { src, meta } = await editor.uploadAsset(asset, file, signal)
 	signal.throwIfAborted()
+	if (hasNewerPreview()) return
 
 	editor.run(
 		() => {
