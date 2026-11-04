@@ -37,7 +37,7 @@
 		"dev-app": "process-compose -f apps/dotcom/process-compose.yaml up",
 		"dev-app:local": "LOCAL_DEV_AUTH=1 VITE_LOCAL_DEV_AUTH=1 pnpm dev-app",
 		"dev-app:clean": "docker compose -f apps/dotcom/zero-cache/docker/docker-compose.yml down --volumes && rm -f /tmp/tldraw-dotcom-zero-dev.db /tmp/tldraw-dotcom-zero-dev.db-shm /tmp/tldraw-dotcom-zero-dev.db-wal && rm -rf apps/dotcom/sync-worker/.wrangler/state-dev apps/dotcom/zero-cache/.schema.js",
-		"dev-app:doctor": "process-compose -f apps/dotcom/process-compose.yaml process list",
+		"dev-app:doctor": "process-compose process list -o wide",
 		"dev-docs": "turbo run dev --filter='./apps/docs'",
 		"dev-huppy": "turbo run dev --filter='./internal/huppy'",
 		"dev-template": "./internal/scripts/dev-template.sh",
