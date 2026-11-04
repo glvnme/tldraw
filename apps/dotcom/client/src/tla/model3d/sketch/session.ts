@@ -234,6 +234,7 @@ export async function publishModel3dSketch(editor: Editor) {
  * revision whose strokes changed after publishing.
  */
 export async function publishModel3dRevision(editor: Editor, revisionId: TLShapeId) {
+	if (editor.getIsReadonly()) return false
 	let records: TLRecord[]
 	let strokeHash: string
 	// The hash is async; retry if the strokes changed underneath it.
@@ -243,7 +244,7 @@ export async function publishModel3dRevision(editor: Editor, revisionId: TLShape
 	} while (!isSameRecords(records, getRevisionContentRecords(editor, revisionId)))
 
 	const revision = getModel3dRevision(editor, revisionId)
-	if (!revision) return false
+	if (!revision || editor.getIsReadonly()) return false
 	editor.markHistoryStoppingPoint('model3d publish')
 	editor.run(() => {
 		editor.updateShape<TLModel3dRevisionShape>({

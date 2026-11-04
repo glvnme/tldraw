@@ -6,8 +6,8 @@ import {
 } from './revisions/overlayImage'
 import { cancelModel3dUpload } from './upload'
 
-// Assigned outside history after creation, so undo and redo replay records from before they
-// were set. Once set, an empty value can only come from such a stale record.
+// These props are assigned outside history. Replaying an older record must not restore a
+// previous model, preview, or camera after a source replacement.
 const ASSIGNED_PROPS: Record<string, readonly string[]> = {
 	[MODEL3D_SHAPE_TYPE]: ['modelId', 'assetId', 'defaultView'],
 	[MODEL3D_REVISION_SHAPE_TYPE]: ['assetId'],
@@ -20,8 +20,7 @@ function keepAssignedProps(known: AssignedProps, next: TLShape): TLShape {
 	if (!keys) return next
 	let props: AssignedProps | null = null
 	for (const key of keys) {
-		const value = (next.props as AssignedProps)[key]
-		if (value || !known[key]) continue
+		if ((next.props as AssignedProps)[key] === known[key]) continue
 		props ??= { ...next.props }
 		props[key] = known[key]
 	}
@@ -43,10 +42,14 @@ export function registerModel3dEditorRules(editor: Editor) {
 		// Remote records are left alone: rewriting them would diverge from the server.
 		sideEffects.registerBeforeCreateHandler('shape', (shape, source) => {
 			const known = deletedProps.get(shape.id)
-			return known && source === 'user' ? keepAssignedProps(known, shape) : shape
+			return known && source === 'user' && editor.isReplayingHistory()
+				? keepAssignedProps(known, shape)
+				: shape
 		}),
 		sideEffects.registerBeforeChangeHandler('shape', (prev, next, source) =>
-			source === 'user' ? keepAssignedProps(prev.props as AssignedProps, next) : next
+			source === 'user' && editor.isReplayingHistory()
+				? keepAssignedProps(prev.props as AssignedProps, next)
+				: next
 		),
 		sideEffects.registerAfterDeleteHandler('shape', (shape) => {
 			if (!ASSIGNED_PROPS[shape.type]) return

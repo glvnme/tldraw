@@ -7,6 +7,12 @@ export const model3dMessages = defineMessages({
 	uploading: { defaultMessage: 'Uploading' },
 	uploadFailed: { defaultMessage: 'Upload failed' },
 	uploadInterrupted: { defaultMessage: 'Upload interrupted' },
+	chooseSource: { defaultMessage: 'Select the file again' },
+	partialModel: {
+		defaultMessage: 'Some model parts are missing. In Rhino, use a Shaded viewport and save again.',
+	},
+	approximateModel: { defaultMessage: 'Some surfaces use an approximate mesh.' },
+	assumedUnits: { defaultMessage: 'The file has no supported units. Millimetres were used.' },
 	remove: { defaultMessage: 'Remove' },
 	retry: { defaultMessage: 'Retry' },
 	noAccess: { defaultMessage: 'You don’t have access to this model.' },
@@ -20,6 +26,7 @@ export const model3dMessages = defineMessages({
 	optimizing: { defaultMessage: 'Optimizing' },
 	saving: { defaultMessage: 'Saving' },
 	loadingStatus: { defaultMessage: 'Loading' },
+	previewFailed: { defaultMessage: 'Could not prepare the preview.' },
 	preparingPreview: { defaultMessage: 'Preparing preview' },
 	openIn3d: { defaultMessage: 'Open in 3D' },
 	close: { defaultMessage: 'Close' },
@@ -49,6 +56,13 @@ export const model3dErrorMessages = defineMessages({
 	unsupported_format: { defaultMessage: 'This file format is not supported.' },
 	draco_unsupported: {
 		defaultMessage: 'Draco-compressed GLB is not supported. Export it without Draco.',
+	},
+	no_render_meshes: {
+		defaultMessage:
+			'No surfaces could be converted. In Rhino, use a Shaded viewport and save, or export GLB, OBJ, or STL.',
+	},
+	source_required: {
+		defaultMessage: 'The original file was deleted. Select the file again to convert it.',
 	},
 	too_large: { defaultMessage: 'The model is too large to convert.' },
 	invalid_state: { defaultMessage: 'The model changed during the conversion.' },

@@ -18,10 +18,20 @@ import {
 	useTranslation,
 	useValue,
 } from 'tldraw'
+import { useCurrentFileId } from '../hooks/useCurrentFileId'
 import { model3dErrorMessages, model3dMessages as messages } from './messages'
+import { pickModel3dFiles } from './pickFiles'
 import { useModel3dStatus, model3dStatusPoller } from './status'
 import { prepareModel3dThumbnail } from './thumbnail'
-import { model3dLocalUploads, requeueModel3d, retryModel3dUpload } from './upload'
+import {
+	cancelModel3dUpload,
+	getModel3dFormat,
+	MODEL3D_MAX_SOURCE_BYTES,
+	startModel3dUpload,
+	model3dLocalUploads,
+	requeueModel3d,
+	retryModel3dUpload,
+} from './upload'
 import { useModel3dGetToken } from './useModel3dGetToken'
 import { openModel3dViewer } from './viewerState'
 import styles from './model3d.module.css'
@@ -114,6 +124,7 @@ export class Model3dShapeUtil extends BaseBoxShapeUtil<TLModel3dShape> {
 
 function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	const editor = useEditor()
+	const fileId = useCurrentFileId()
 	const msg = useTranslation()
 	const getToken = useModel3dGetToken()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
@@ -140,15 +151,30 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		width: shape.props.w,
 	})
 
+	const [previewAttempt, setPreviewAttempt] = useState(0)
+	const [previewError, setPreviewError] = useState(false)
 	const ready = snapshot.kind === 'ok' && snapshot.status.status === 'ready'
 	useEffect(() => {
 		if (!ready || shape.props.assetId || isReadonly) return
 		const abort = new AbortController()
+		setPreviewError(false)
 		void prepareModel3dThumbnail(editor, shape.id, getToken, abort.signal).catch((error) => {
-			if (!abort.signal.aborted) console.error('Could not prepare the model preview', error)
+			if (!abort.signal.aborted) {
+				console.error('Could not prepare the model preview', error)
+				setPreviewError(true)
+			}
 		})
 		return () => abort.abort()
-	}, [editor, shape.id, shape.props.modelId, shape.props.assetId, ready, isReadonly, getToken])
+	}, [
+		editor,
+		shape.id,
+		shape.props.modelId,
+		shape.props.assetId,
+		ready,
+		isReadonly,
+		getToken,
+		previewAttempt,
+	])
 
 	const [retryError, setRetryError] = useState<string | null>(null)
 	const retryConversion = useCallback(async () => {
@@ -160,6 +186,48 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 		}
 		model3dStatusPoller.refresh(modelId)
 	}, [getToken, modelId])
+
+	const selectSource = useCallback(async () => {
+		if (editor.getIsReadonly()) return
+		const [file] = await pickModel3dFiles()
+		const format = file && getModel3dFormat(file.name)
+		if (
+			!file ||
+			!format ||
+			!fileId ||
+			editor.getIsReadonly() ||
+			editor.getShape<TLModel3dShape>(shape.id)?.props.modelId !== modelId
+		)
+			return
+		if (!file.size || file.size > MODEL3D_MAX_SOURCE_BYTES) {
+			setRetryError(msg(file.size ? messages.tooLarge : messages.empty))
+			return
+		}
+		startModel3dUpload(shape.id, {
+			file,
+			format,
+			fileId,
+			getToken,
+			onCreated: (newModelId) => {
+				if (
+					editor.getIsReadonly() ||
+					editor.getShape<TLModel3dShape>(shape.id)?.props.modelId !== modelId
+				) {
+					cancelModel3dUpload(shape.id)
+					return
+				}
+				editor.run(
+					() =>
+						editor.updateShape<TLModel3dShape>({
+							id: shape.id,
+							type: MODEL3D_SHAPE_TYPE,
+							props: { modelId: newModelId, assetId: null, defaultView: null, altText: file.name },
+						}),
+					{ history: 'ignore', ignoreShapeLock: true }
+				)
+			},
+		})
+	}, [editor, shape.id, modelId, fileId, getToken, msg])
 
 	const status = snapshot.kind === 'ok' ? snapshot.status : null
 	const name = status?.name || altText || msg(messages.model)
@@ -216,9 +284,11 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 				label={msg(messages.conversionFailed)}
 				detail={retryError ? msg(messages.retryFailed, { error: retryError }) : errorMessage}
 				action={
-					!isReadonly && RETRYABLE_ERRORS.has(errorCode)
-						? { label: msg(messages.retry), onClick: retryConversion }
-						: undefined
+					!isReadonly && status.sourceFormat === '3dm'
+						? { label: msg(messages.chooseSource), onClick: selectSource }
+						: !isReadonly && RETRYABLE_ERRORS.has(errorCode)
+							? { label: msg(messages.retry), onClick: retryConversion }
+							: undefined
 				}
 			/>
 		)
@@ -242,6 +312,20 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	}
 
 	if (!thumbnailUrl) {
+		if (ready && previewError) {
+			return (
+				<Status
+					name={name}
+					tone="error"
+					label={msg(messages.previewFailed)}
+					action={
+						isReadonly
+							? undefined
+							: { label: msg(messages.retry), onClick: () => setPreviewAttempt((n) => n + 1) }
+					}
+				/>
+			)
+		}
 		return snapshot.kind === 'error' ? (
 			<Status name={name} tone="error" label={snapshot.message} />
 		) : (
@@ -252,6 +336,22 @@ function Model3dShapeBody({ shape }: { shape: TLModel3dShape }) {
 	return (
 		<div className={styles.model}>
 			<img className={styles.image} src={thumbnailUrl} alt={altText} draggable={false} />
+			{status?.manifest?.version === 2 && status.manifest.warnings.length > 0 && (
+				<span className={styles.modelWarning}>
+					{msg(
+						status.manifest.warnings.some(
+							(warning) =>
+								warning.code === 'missing_render_mesh' ||
+								warning.code === 'unsupported_entity' ||
+								warning.code === 'instance_depth_limit'
+						)
+							? messages.partialModel
+							: status.manifest.warnings.some((warning) => warning.code === 'units_assumed')
+								? messages.assumedUnits
+								: messages.approximateModel
+					)}
+				</span>
+			)}
 			{ready && isActive && (
 				<PlayButton
 					label={msg(messages.openIn3d)}

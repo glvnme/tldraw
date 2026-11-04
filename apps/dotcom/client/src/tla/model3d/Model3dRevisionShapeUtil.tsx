@@ -4,7 +4,7 @@ import {
 	model3dRevisionShapeMigrations,
 	model3dRevisionShapeProps,
 } from '@tldraw/dotcom-shared'
-import { PointerEvent, ReactNode, useEffect, useState } from 'react'
+import { PointerEvent, ReactNode, useEffect, useRef, useState } from 'react'
 import {
 	BaseFrameLikeShapeUtil,
 	FileHelpers,
@@ -18,6 +18,7 @@ import {
 	useEditor,
 	useImageOrVideoAsset,
 	useTranslation,
+	useToasts,
 	useValue,
 } from 'tldraw'
 import { revisionMessages as messages } from './revisions/messages'
@@ -201,6 +202,23 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 	const msg = useTranslation()
 	const isReadonly = useValue('isReadonly', () => editor.getIsReadonly(), [editor])
 	const isEdited = useIsRevisionEdited(shape)
+	const { addToast } = useToasts()
+	const [isPublishing, setIsPublishing] = useState(false)
+	const publishing = useRef(false)
+	const republish = async () => {
+		if (publishing.current) return
+		publishing.current = true
+		setIsPublishing(true)
+		try {
+			await publishModel3dRevision(editor, shape.id)
+		} catch (error) {
+			console.error('Could not publish the revision', error)
+			addToast({ severity: 'error', title: msg(messages.publishFailed) })
+		} finally {
+			publishing.current = false
+			setIsPublishing(false)
+		}
+	}
 	const { url } = useImageOrVideoAsset({
 		shapeId: shape.id,
 		assetId: shape.props.assetId,
@@ -223,7 +241,7 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 				<span className={styles.headingName}>{shape.props.name}</span>
 				<Model3dRevisionBadge shape={shape} isEdited={isEdited} />
 				{isEdited && !isReadonly && (
-					<HeadingButton onClick={() => publishModel3dRevision(editor, shape.id)}>
+					<HeadingButton onClick={republish} disabled={isPublishing}>
 						{msg(messages.republish)}
 					</HeadingButton>
 				)}
@@ -233,12 +251,21 @@ function Model3dRevisionBody({ shape }: { shape: TLModel3dRevisionShape }) {
 }
 
 // Marked handled so a press doesn't start a select or drag, like tldraw's HyperlinkButton.
-function HeadingButton({ onClick, children }: { onClick(): void; children: ReactNode }) {
+function HeadingButton({
+	onClick,
+	children,
+	disabled,
+}: {
+	onClick(): void
+	children: ReactNode
+	disabled?: boolean
+}) {
 	const editor = useEditor()
 	const markAsHandled = (e: PointerEvent<HTMLButtonElement>) => editor.markEventAsHandled(e)
 	return (
 		<button
 			className={styles.headingButton}
+			disabled={disabled}
 			onPointerDown={markAsHandled}
 			onPointerUp={markAsHandled}
 			onClick={onClick}

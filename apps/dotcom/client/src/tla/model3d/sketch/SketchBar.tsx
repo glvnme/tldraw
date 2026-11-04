@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
 	EditorPortal,
 	TldrawUiButton,
@@ -9,6 +9,7 @@ import {
 	react,
 	useEditor,
 	useTranslation,
+	useToasts,
 	useValue,
 } from 'tldraw'
 import { revisionMessages as messages } from '../revisions/messages'
@@ -38,6 +39,23 @@ export function Model3dSketchMount() {
 function Model3dSketchBar() {
 	const editor = useEditor()
 	const msg = useTranslation()
+	const { addToast } = useToasts()
+	const [isPublishing, setIsPublishing] = useState(false)
+	const publishing = useRef(false)
+	const publish = async () => {
+		if (publishing.current) return
+		publishing.current = true
+		setIsPublishing(true)
+		try {
+			await publishModel3dSketch(editor)
+		} catch (error) {
+			console.error('Could not publish the revision', error)
+			addToast({ severity: 'error', title: msg(messages.publishFailed) })
+		} finally {
+			publishing.current = false
+			setIsPublishing(false)
+		}
+	}
 	const name = useValue(
 		'model3d sketch name',
 		() => {
@@ -101,6 +119,7 @@ function Model3dSketchBar() {
 					<TldrawUiToolbarButton
 						type="icon"
 						title={msg(messages.backTo3d)}
+						disabled={isPublishing}
 						onClick={() => exitModel3dSketch(editor)}
 					>
 						<TldrawUiButtonIcon icon="arrow-left" small />
@@ -109,11 +128,12 @@ function Model3dSketchBar() {
 					<TldrawUiToolbarButton
 						type="icon"
 						title={msg(messages.discard)}
+						disabled={isPublishing}
 						onClick={() => discardModel3dSketch(editor)}
 					>
 						<TldrawUiButtonIcon icon="trash" small />
 					</TldrawUiToolbarButton>
-					<TldrawUiButton type="primary" onClick={() => publishModel3dSketch(editor)}>
+					<TldrawUiButton type="primary" disabled={isPublishing} onClick={publish}>
 						<TldrawUiButtonLabel>{msg(messages.publish)}</TldrawUiButtonLabel>
 					</TldrawUiButton>
 				</TldrawUiToolbar>

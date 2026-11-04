@@ -162,3 +162,14 @@
 	margin: 0 2px;
 	background: var(--tl-color-divider);
 }
+
+.modelWarning {
+	position: absolute;
+	left: 6px;
+	right: 6px;
+	top: 6px;
+	padding: 4px 6px;
+	background: var(--tl-color-panel);
+	color: var(--tl-color-text-1);
+	font: 11px/1.35 var(--tl-font-sans);
+}

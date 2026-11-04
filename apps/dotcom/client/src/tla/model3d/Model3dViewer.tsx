@@ -240,9 +240,14 @@ function Model3dViewerScene({ shapeId, modelId }: { shapeId: TLShapeId; modelId:
 					{msg(
 						snapshot.kind === 'forbidden'
 							? messages.noAccess
-							: snapshot.kind === 'ok' && snapshot.status.status === 'failed'
-								? messages.conversionFailedViewer
-								: messages.preparing
+							: snapshot.kind === 'not_found'
+								? messages.notFound
+								: snapshot.kind === 'error'
+									? messages.loadFailed
+									: snapshot.kind === 'ok' && snapshot.status.status === 'failed'
+										? messages.conversionFailedViewer
+										: messages.preparing,
+						snapshot.kind === 'error' ? { error: snapshot.message } : undefined
 					)}
 				</div>
 			) : load.kind === 'loading' ? (
