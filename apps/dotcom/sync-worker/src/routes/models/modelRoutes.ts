@@ -3,6 +3,7 @@ import {
 	CreateModelResponse,
 	DB,
 	GetModelStatusResponse,
+	MODEL3D_RETRYABLE_ERRORS,
 	MODEL3D_ROUTES,
 	Model3dArtifactName,
 	Model3dConvertJob,
@@ -205,7 +206,19 @@ async function uploadModelPart(request: IRequest, env: Environment): Promise<Res
 	if (!isPartNumber(partNumber)) fail(400, 'bad_request', 'Invalid part number')
 	const userId = await requireUserId(request, env)
 	const bucket = getBucket(env)
-	const model = await withDb(env, (db) => loadModelForMember(db, modelId, userId))
+	const model = await withDb(env, async (db) => {
+		const model = await loadModelForMember(db, modelId, userId)
+		// Lets other tabs tell a live upload from an abandoned one.
+		if (model.status === 'uploading') {
+			await db
+				.updateTable('model')
+				.set({ updatedAt: Date.now() })
+				.where('id', '=', modelId)
+				.where('status', '=', 'uploading')
+				.execute()
+		}
+		return model
+	})
 	if (model.status !== 'uploading' || !model.uploadId) fail(409, 'invalid_state')
 	if (partNumber > Math.ceil(model.sourceBytes / MODEL_PART_SIZE)) {
 		fail(400, 'bad_request', 'Part number past the declared size')
@@ -275,8 +288,7 @@ async function completeModelUpload(
 		// The client's retry: run the conversion again from the stored source. The new attempt writes
 		// under its own job id, so the old attempt's artifacts are left where they are.
 		if (model.status === 'failed') {
-			if (model.sourceFormat === '3dm' || !(await bucket.head(modelKeys.source(modelId))))
-				fail(409, 'source_required')
+			if (!(await bucket.head(modelKeys.source(modelId)))) fail(409, 'source_required')
 			const claimed = await db
 				.updateTable('model')
 				.set({
@@ -359,8 +371,6 @@ async function expireAbandonedJob(
 				? await probeConverterJob(env, model)
 				: null
 	if (!errorCode) return model
-	if (model.sourceFormat === '3dm' && model.jobId)
-		await env.QUEUE.send({ type: 'model-source-delete', modelId: model.id, jobId: model.jobId })
 	const expired = await db
 		.updateTable('model')
 		.set({ status: 'failed', stage: null, errorCode, updatedAt: Date.now() })
@@ -379,11 +389,6 @@ async function getModelStatus(request: IRequest, env: Environment): Promise<Resp
 	const model = await withDb(env, async (db) =>
 		expireAbandonedJob(env, db, await loadModelForMember(db, modelId, userId))
 	)
-	if (model.sourceFormat === '3dm' && ['ready', 'failed'].includes(model.status)) {
-		await getBucket(env)
-			.delete(modelKeys.source(modelId))
-			.catch((error) => console.error('3DM source deletion pending', error))
-	}
 	const response: GetModelStatusResponse = {
 		modelId: model.id,
 		name: model.name,
@@ -393,6 +398,7 @@ async function getModelStatus(request: IRequest, env: Environment): Promise<Resp
 		progress: model.progress,
 		errorCode: model.errorCode,
 		manifest: model.manifest,
+		updatedAt: model.updatedAt,
 	}
 	return Response.json(response, { headers: { 'cache-control': 'no-store' } })
 }
@@ -530,9 +536,6 @@ async function postModelJobStatus(request: IRequest, env: Environment): Promise<
 				update = { status: 'failed', stage: null, errorCode: body.errorCode }
 				break
 		}
-		if (model.sourceFormat === '3dm' && body.status !== 'converting') {
-			await env.QUEUE.send({ type: 'model-source-delete', modelId, jobId })
-		}
 		const updated = await db
 			.updateTable('model')
 			.set({ ...update, updatedAt: now })
@@ -542,7 +545,13 @@ async function postModelJobStatus(request: IRequest, env: Environment): Promise<
 			.returning('id')
 			.executeTakeFirst()
 		if (!updated) fail(409, 'invalid_state')
-		if (model.sourceFormat === '3dm' && body.status !== 'converting') {
+		// The converter has decided about the file itself, so a retry could not do better. A retryable
+		// failure keeps the source for Retry.
+		const isFinal =
+			body.status === 'ready' ||
+			(body.status === 'failed' && !MODEL3D_RETRYABLE_ERRORS.includes(body.errorCode))
+		if (model.sourceFormat === '3dm' && isFinal) {
+			await queueSourceDelete(env, model)
 			await bucket
 				.delete(modelKeys.source(modelId))
 				.catch((error) => console.error('3DM source deletion queued', error))
@@ -589,8 +598,7 @@ async function dispatchJob(env: Environment, model: TlaModel) {
 	} catch (error) {
 		console.error(`model converter unreachable for job ${model.id}`, error)
 	}
-	if (model.sourceFormat === '3dm' && model.jobId)
-		await env.QUEUE.send({ type: 'model-source-delete', modelId: model.id, jobId: model.jobId })
+	// The source stays, so Retry works once the converter is back.
 	await withDb(env, (db) =>
 		db
 			.updateTable('model')
@@ -612,7 +620,17 @@ export const modelRoutes = createRouter<Environment>()
 	.put(MODEL3D_ROUTES.artifact, handle(putModelArtifact))
 	.post(MODEL3D_ROUTES.jobStatus, handle(postModelJobStatus))
 
-/** Queue delivery can precede the terminal commit; retry until that commit is visible. */
+/** Sent after the terminal commit and best effort, so a queue outage cannot block the status. */
+async function queueSourceDelete(env: Environment, model: TlaModel) {
+	if (model.sourceFormat !== '3dm' || !model.jobId) return
+	await env.QUEUE.send({
+		type: 'model-source-delete',
+		modelId: model.id,
+		jobId: model.jobId,
+	}).catch((error) => console.error(`could not queue source deletion for model ${model.id}`, error))
+}
+
+/** Throws on an R2 failure so queue delivery retries; deleting a missing key succeeds. */
 export async function deleteModelSource(env: Environment, modelId: string, jobId: string) {
 	await withDb(env, async (db) => {
 		const model = await db
@@ -623,8 +641,6 @@ export async function deleteModelSource(env: Environment, modelId: string, jobId
 		if (!model || model.jobId !== jobId || model.sourceFormat !== '3dm') return
 		if (CONVERTING.includes(model.status)) throw new Error('Model conversion has not finished')
 		if (model.status === 'ready' || model.status === 'failed')
-			await getBucket(env)
-				.delete(modelKeys.source(modelId))
-				.catch((error) => console.error('3DM source deletion pending', error))
+			await getBucket(env).delete(modelKeys.source(modelId))
 	})
 }

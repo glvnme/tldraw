@@ -29,6 +29,20 @@ export const MODEL3D_ERROR_CODES = [
 
 export type Model3dErrorCode = (typeof MODEL3D_ERROR_CODES)[number]
 
+/**
+ * Failures that say nothing about the file, so the same source can convert on a retry. The worker
+ * keeps a 3DM source after these and deletes it after any other terminal result.
+ */
+export const MODEL3D_RETRYABLE_ERRORS: readonly (Model3dErrorCode | null)[] = [
+	null,
+	'invalid_state',
+	'invalid_token',
+	'converter_unavailable',
+	'conversion_failed',
+	'conversion_timeout',
+	'internal_error',
+]
+
 export interface Model3dErrorResponse {
 	error: Model3dErrorCode
 	message?: string
@@ -104,6 +118,8 @@ export interface GetModelStatusResponse {
 	progress: number
 	errorCode: Model3dErrorCode | null
 	manifest: Model3dManifest | null
+	/** Server time of the row's last change; each uploaded part moves it too. */
+	updatedAt: number
 }
 
 /** POSTed by the worker to the converter service. */

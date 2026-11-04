@@ -242,10 +242,20 @@ describe('artifacts and job status', () => {
 		}
 	})
 
-	it('rejects a v2 manifest with an invalid matrix or source hash', async () => {
+	it('rejects a v2 manifest with an invalid matrix, source hash, or oversized metadata', async () => {
+		const { source } = RHINO_MANIFEST
 		for (const manifest of [
 			{ ...RHINO_MANIFEST, transform: { ...RHINO_MANIFEST.transform, sourceToModel: [1, 2] } },
-			{ ...RHINO_MANIFEST, source: { ...RHINO_MANIFEST.source, sha256: 'bad hash' } },
+			{ ...RHINO_MANIFEST, source: { ...source, sha256: 'bad hash' } },
+			{ ...RHINO_MANIFEST, source: { ...source, filename: 'a'.repeat(257) } },
+			{
+				...RHINO_MANIFEST,
+				source: { ...source, document: { ...source.document, createdBy: 'a'.repeat(257) } },
+			},
+			{
+				...RHINO_MANIFEST,
+				warnings: Array.from({ length: 17 }, () => ({ code: 'approximate_mesh', count: 1 })),
+			},
 		]) {
 			mockDb([[modelRow({ sourceFormat: '3dm' })]])
 			const body = JSON.stringify(manifest)
@@ -295,7 +305,21 @@ describe('artifacts and job status', () => {
 		}
 	)
 
+	it('keeps a 3DM source after a retryable failure so Retry can use it', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		mockDb([[modelRow({ sourceFormat: '3dm' })], [{ id: MODEL_ID }]])
+		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
+			method: 'POST',
+			headers: await bearer(),
+			body: JSON.stringify({ status: 'failed', errorCode: 'conversion_failed' }),
+		})
+		expect(response.status).toBe(200)
+		expect(env.QUEUE.send).not.toHaveBeenCalled()
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).not.toBeNull()
+	})
+
 	it('keeps source cleanup queued if R2 deletion fails', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
 		mockDb([[modelRow({ sourceFormat: '3dm' })], [{ id: MODEL_ID }]])
 		vi.spyOn(env.MODELS!, 'delete').mockRejectedValueOnce(new Error('R2 unavailable'))
 		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
@@ -305,6 +329,20 @@ describe('artifacts and job status', () => {
 		})
 		expect(response.status).toBe(200)
 		expect(env.QUEUE.send).toHaveBeenCalledOnce()
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).not.toBeNull()
+	})
+
+	it('commits a terminal status when the queue is down', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		mockDb([[modelRow({ sourceFormat: '3dm' })], [{ id: MODEL_ID }]])
+		vi.mocked(env.QUEUE.send).mockRejectedValueOnce(new Error('queue unavailable'))
+		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
+			method: 'POST',
+			headers: await bearer(),
+			body: JSON.stringify({ status: 'failed', errorCode: 'no_render_meshes' }),
+		})
+		expect(response.status).toBe(200)
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).toBeNull()
 	})
 
 	it('refuses writes from a job that a retry has replaced', async () => {
@@ -438,11 +476,12 @@ describe('user routes', () => {
 			progress: 0.3,
 			errorCode: null,
 			manifest: null,
+			updatedAt: expect.any(Number),
 		})
 	})
 
 	it('expires a job the converter abandoned so the client can retry', async () => {
-		const stale = modelRow({ updatedAt: Date.now() - MODEL_JOB_EXPIRY_MS - 1 })
+		const stale = modelRow({ sourceFormat: '3dm', updatedAt: Date.now() - MODEL_JOB_EXPIRY_MS - 1 })
 		const expired = { ...stale, status: 'failed', stage: null, errorCode: 'conversion_timeout' }
 		const db = mockDb([[{ ...stale, role: 'member' }], [expired]])
 		const response = await call(`/app/models/${MODEL_ID}`)
@@ -456,6 +495,8 @@ describe('user routes', () => {
 		expect(update.parameters).toEqual(
 			expect.arrayContaining(['failed', 'conversion_timeout', MODEL_ID, stale.updatedAt])
 		)
+		// The converter lost the job, not the file: the source stays for Retry.
+		expect(env.QUEUE.send).not.toHaveBeenCalled()
 	})
 
 	it('leaves a job that reported recently alone without probing the converter', async () => {
@@ -567,13 +608,15 @@ describe('user routes', () => {
 	it('uploads parts and completes into a queued conversion', async () => {
 		const upload = await env.MODELS!.createMultipartUpload(`m/${MODEL_ID}/source`)
 		const uploading = modelRow({ status: 'uploading', stage: null, uploadId: upload.uploadId })
-		mockDb([[{ ...uploading, role: 'owner' }]])
+		const partDb = mockDb([[{ ...uploading, role: 'owner' }], []])
 		const part = await call(`/app/models/${MODEL_ID}/parts/1`, {
 			method: 'PUT',
 			headers: { 'content-length': '3' },
 			body: new Uint8Array([7, 8, 9]),
 		})
 		expect(await part.json()).toEqual({ partNumber: 1, etag: 'etag-1' })
+		// Each part moves `updatedAt`, so other tabs can tell the upload is alive.
+		expect(partDb.queries.at(-1)!.sql).toMatch(/^update "model" set "updatedAt" = \$1/)
 
 		const db = mockDb([[{ ...uploading, role: 'owner' }], [{ ...uploading, status: 'queued' }]])
 		const fetchMock = vi.fn(async () => new Response(null, { status: 202 }))
@@ -652,7 +695,11 @@ describe('user routes', () => {
 
 	it('re-queues a failed model whose source exists, and marks it failed if the converter is down', async () => {
 		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
-		const failed = modelRow({ status: 'failed', errorCode: 'conversion_failed' })
+		const failed = modelRow({
+			status: 'failed',
+			errorCode: 'conversion_failed',
+			sourceFormat: '3dm',
+		})
 		const db = mockDb([[{ ...failed, role: 'member' }], [{ ...failed, status: 'queued' }]])
 		vi.stubGlobal(
 			'fetch',
@@ -674,6 +721,8 @@ describe('user routes', () => {
 		expect(markFailed.parameters).toEqual(
 			expect.arrayContaining(['failed', 'converter_unavailable', MODEL_ID, 'queued'])
 		)
+		expect(env.QUEUE.send).not.toHaveBeenCalled()
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).not.toBeNull()
 	})
 
 	it('answers with the winner’s status when a racing retry claimed the model first', async () => {
@@ -711,6 +760,11 @@ describe('3DM source deletion queue', () => {
 		mockDb([[modelRow({ sourceFormat: '3dm', status: 'failed', jobId: 'new-job' })]])
 		await deleteModelSource(env, MODEL_ID, JOB_ID)
 		expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).not.toBeNull()
+	})
+	it('fails delivery when R2 deletion fails so the queue retries', async () => {
+		mockDb([[modelRow({ sourceFormat: '3dm', status: 'ready' })]])
+		vi.spyOn(env.MODELS!, 'delete').mockRejectedValueOnce(new Error('R2 unavailable'))
+		await expect(deleteModelSource(env, MODEL_ID, JOB_ID)).rejects.toThrow('R2 unavailable')
 	})
 	it('deletes a source after terminal commit', async () => {
 		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
