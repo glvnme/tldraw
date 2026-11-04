@@ -21,20 +21,25 @@ pnpm --filter @tldraw/model-converter exec tsx src/cli.ts convert /path/site.3dm
 
 This writes `site.glb` and `site.manifest.json`. The CLI reads the local source file and leaves it in place.
 
-The service deletes its staged source after a successful or failed conversion. It sends a cleanup message before the terminal database update, then deletes the source. Queue delivery retries deletion if needed. The queue checks the model and job IDs before it deletes anything. A status read also deletes a source left after a terminal result. If the converter cannot start, or its job expires, the cleanup message uses the same path. Incomplete multipart uploads are outside this change.
+The service deletes its staged source once the converter reports a result about the file: `ready`, or `failed` with an error that a retry cannot fix (for example `no_render_meshes`). After the terminal database update it deletes the source and sends a best-effort cleanup message, which the queue retries until R2 confirms the deletion. The queue checks the model and job IDs before it deletes anything. The source stays after `converter_unavailable`, an expired or abandoned job, and other retryable failures, so **Retry** converts it again. A retryable failure that is never retried keeps its source. Incomplete multipart uploads are outside this change.
 
-A failed 3DM import has **Select the file again**. This creates a new model row and replaces the failed model on that canvas shape. It does not create a revision of the old model. The client does not claim that a selected file matches the old source hash.
+When the source is gone, a failed 3DM import has **Select the file again**. This creates a new model row and replaces the failed model on that canvas shape, keeping its default view. It does not create a revision of the old model. The client does not claim that a selected file matches the old source hash.
 
 The ghost reference is in manifest v2: safe filename, byte count, SHA-256, archive version, application, document facts, units, base point, optional earth location, and object counts. The GLB has its own hash. No new database columns are needed for this path. File deduplication and revision matching are deferred.
 
 Current mesh fallback:
 
-- Flat faces use shared adaptive edge samples and earcut. Holes are kept.
-- Untrimmed curved faces use a 48 by 48 surface grid. The reader requires agreement between the trim boundary and all four surface boundaries before it uses this grid.
-- Curved grid boundaries are not snapped to adjacent face samples. Small gaps can occur. These meshes have an approximation warning.
+- Flat faces use shared adaptive edge samples and earcut. Holes are kept. Slit, curve-on-surface and point loops are not holes and are ignored. A triangulation whose area differs from the outer loop minus its holes by more than 0.1% counts the face as missing.
+- Untrimmed curved faces use a surface grid. Its density per direction follows iso-curve sag against the model tolerance, capped at 0.2% of the face size and at 64 steps, so a ruled wall gets one row. The reader requires agreement between the trim boundary and all four surface boundaries before it uses this grid. Triangles that collapse at singular sides (sphere poles) are dropped.
+- Curved grid boundaries are not snapped to adjacent face samples, so small cracks can show between adjacent curved faces. Gaps up to about 10 times the model tolerance were measured. These meshes have an approximation warning.
 - Trimmed curved faces without a stored mesh are skipped and counted. Partial models have a visible warning. A model with no triangles fails with `no_render_meshes`.
-- SubD uses a copy of the control net with three subdivisions. Source geometry is not changed.
-- Textures, vertex colours, and annotation geometry are not converted. Display colours and transparency are kept.
+- SubD uses a copy of the control net with three subdivisions. Source geometry is not changed. Each SubD counts as an approximate face.
+- Only meshes, Breps, extrusions, SubDs and bare surfaces count toward coverage. Curves, points, text, hatches and clipping planes are ignored without a warning.
+- Block members are meshed once per definition and copied per placement.
+- Colours are converted from sRGB to linear for glTF. Alpha is at least 0.2, so fully transparent glass stays visible. A pure black layer colour (Rhino's default) shades grey.
+- Textures and vertex colours are not converted.
+- Limits for hostile files: at most 200,000 objects (`too_large`), 64 user strings per object (keys up to 256 characters, values up to 2,048), and 256 characters for names and document fields. The worker rejects a manifest with longer source fields or more than 16 warnings.
+- A result with fewer than 12 triangles carries a `near_empty` warning.
 
 The reader uses double-precision mesh vertices and transform components. It subtracts the origin before it writes float32 positions. Rhino's `toThreejsBuffers` and `Transform.toFloatArray` lose precision before this step and are not used.
 
@@ -42,7 +47,19 @@ The reader uses double-precision mesh vertices and transform components. It subt
 
 The converter tests create real 3DM archives in memory. They cover mesh packing and feature IDs, units, hidden parent layers, uncached boxes, caps with holes, nested and mirrored blocks, precision far from the origin, empty input, and triangle limits. Model route tests cover manifest v2, source mismatch rejection, current-job tokens, source deletion, failed deletion, and delayed queue delivery.
 
-A local run on 19 public samples converted 18 files. `v8_caps_and_joins.3dm` had no supported surfaces and returned `no_render_meshes`. The teapot and example-file samples reported missing faces. No file larger than 10 MB was checked. Large project files still need validation before production use.
+A local run on 19 public samples converted 18 files, and all 18 GLBs pass the Khronos validator with no errors or warnings. Every `_BATCHID` resolves to a feature after packing. `v8_caps_and_joins.3dm` had no supported surfaces and returned `no_render_meshes`. The teapot and example-file samples reported missing faces. No file larger than 10 MB was checked. Large project files still need validation before production use.
+
+### Fallback accuracy against Rhino's own meshes (2026-11-04)
+
+The fallback mesher was run on faces that do have cached meshes, with Rhino's mesh as the reference. Orientation always agreed (area-weighted normal dot product at least 0.991), no face filled a trimmed-away area, and all 39 flat faces with holes kept them. Coverage is the limit:
+
+| File            | Faces the fallback rejects | Share of surface area |
+| --------------- | -------------------------- | --------------------- |
+| `v4_RhinoPhone` | 183 of 370                 | 63%                   |
+| `v6_rhino_logo` | 7 of 22                    | 89%                   |
+| `v5_disk_brake` | 458 of 888                 | 16%                   |
+
+These are trimmed curved faces. So a curved product-style model saved without render meshes loses most of its surface. Box, slab and extrusion massing converts fully. Meshing trimmed curved faces in UV (edge samples mapped through `closestPoint`, earcut plus interior points, then lifted to 3D) is the next mesher step if real files need it.
 
 ## The format, briefly
 

@@ -66,7 +66,7 @@ Without the source, a failed conversion can't be retried from storage. Retry ask
 | `rhino3dm` `Surface.isPlanar()` (new)         | **Unreliable.** It returned true for all 97 teapot faces and every curved face of the Rhino logo. A sampled flatness test found 6 and 6 flat faces. Don't use it.                                                                                                                                    |
 | Our own fallback mesher, coverage spike (new) | Classified every face that has no cached mesh as flat, curved but untrimmed, or curved and trimmed. Flat and untrimmed faces are recoverable: 100% of uncached faces in 9 of 11 such files, 92% in `v5_example_file`, 69% in `v5_teapot`. Script: `/tmp/weave-3d-formats/opus/scripts/coverage.mjs`. |
 
-So "no render meshes" isn't a dead end for architectural files. Walls, slabs, extrusions and box massing are flat or untrimmed faces. Only trimmed curved faces stay out of reach without a real mesher.
+So "no render meshes" isn't a dead end for box, slab and extrusion massing, which is flat or untrimmed. It still is for curved designs: a later accuracy check against Rhino's own meshes found that trimmed curved faces carry 63% of the RhinoPhone's surface and 89% of the Rhino logo's. See [3dm.md](3dm.md).
 
 ### Stage 3A: reader on cached meshes (about 1 week)
 

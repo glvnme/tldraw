@@ -1,4 +1,4 @@
-import earcut from 'earcut'
+import earcut, { deviation as triangulationDeviation } from 'earcut'
 import type { Brep, BrepFace, Surface } from 'rhino3dm'
 
 export interface RhinoMeshData {
@@ -75,12 +75,21 @@ export function createEdgeSampler(brep: Brep, tolerance: number) {
 
 type EdgeSampler = ReturnType<typeof createEdgeSampler>
 
+// BrepLoopType values. A slit is a zero-area cut, not a hole, and the curve and point loops
+// only mark features on the surface; none of them bound the area to fill.
+const OUTER_LOOP = 1
+const INNER_LOOP = 2
+// earcut can return triangles that miss or overlap parts of a self-touching polygon.
+const MAX_TRIANGULATION_DEVIATION = 1e-3
+
 function faceLoops(face: BrepFace, sample: EdgeSampler) {
 	const loops: { outer: boolean; points: number[][] }[] = []
 	for (let li = 0; li < face.loops.count; li++) {
 		const loop = face.loops.get(li)
 		const points: number[][] = []
 		try {
+			const type = (loop.loopType as unknown as { value: number }).value
+			if (type !== OUTER_LOOP && type !== INNER_LOOP) continue
 			for (let ti = 0; ti < loop.trims.count; ti++) {
 				const trim = loop.trims.get(ti)
 				try {
@@ -99,7 +108,7 @@ function faceLoops(face: BrepFace, sample: EdgeSampler) {
 				}
 			}
 			if (points.length > 1 && distance(points[0], points[points.length - 1]) < 1e-9) points.pop()
-			loops.push({ outer: (loop.loopType as unknown as { value: number }).value === 1, points })
+			loops.push({ outer: type === OUTER_LOOP, points })
 		} finally {
 			release(loop)
 		}
@@ -151,6 +160,8 @@ export function meshRhinoFace(
 				}
 			}
 			const indices = earcut(flat, holes)
+			// A bad triangulation counts as a missing face rather than a wrong one.
+			if (triangulationDeviation(flat, holes, 2, indices) > MAX_TRIANGULATION_DEVIATION) return null
 			orient(vertices, indices, face.orientationIsReversed ? n.map((v) => -v) : n)
 			return { positions: vertices, indices }
 		}
@@ -175,31 +186,64 @@ export function meshRhinoFace(
 			!sides.every((line) => line.every((p) => near(p, [ring])))
 		)
 			return null
-		return meshRhinoSurface(surface, face.orientationIsReversed)
+		return meshRhinoSurface(surface, { reversed: face.orientationIsReversed, tolerance })
 	} finally {
 		release(surface)
 	}
 }
 
-export function meshRhinoSurface(surface: Surface, reversed = false): RhinoMeshData {
+const MAX_GRID_STEPS = 64
+
+/**
+ * Grid density per direction follows the iso-curves' sag against the tolerance, so a ruled
+ * wall gets one row instead of 48 (a fixed 48x48 grid gave the teapot sample 254k triangles).
+ * The tolerance is capped relative to the surface size so small fillets are not one quad.
+ */
+export function meshRhinoSurface(
+	surface: Surface,
+	{ reversed = false, tolerance }: { reversed?: boolean; tolerance: number }
+): RhinoMeshData {
 	const [u0, u1] = surface.domain(0),
 		[v0, v1] = surface.domain(1)
-	const steps = 48
+	const at = (s: number, t: number) => surface.pointAt(u0 + (u1 - u0) * s, v0 + (v1 - v0) * t)
+	let diagonal = 0
+	const corner = at(0, 0)
+	for (const s of [0, 0.5, 1])
+		for (const t of [0, 0.5, 1]) diagonal = Math.max(diagonal, distance(corner, at(s, t)))
+	const sag = Math.min(tolerance, Math.max(diagonal * 0.002, 1e-9))
+	const stepsAlong = (direction: 0 | 1) => {
+		let steps = surface.degree(direction) > 1 ? 2 : 1
+		for (const fixed of [0, 0.5, 1]) {
+			const iso = (t: number) => (direction === 0 ? at(t, fixed) : at(fixed, t))
+			steps = Math.max(steps, sampleCurve(iso, 0, 1, sag, 6).length - 1)
+		}
+		return Math.min(steps, MAX_GRID_STEPS)
+	}
+	const su = stepsAlong(0),
+		sv = stepsAlong(1)
 	const positions: number[] = [],
 		indices: number[] = []
-	for (let u = 0; u <= steps; u++)
-		for (let v = 0; v <= steps; v++) {
-			positions.push(...surface.pointAt(u0 + ((u1 - u0) * u) / steps, v0 + ((v1 - v0) * v) / steps))
+	for (let u = 0; u <= su; u++) for (let v = 0; v <= sv; v++) positions.push(...at(u / su, v / sv))
+	const same = (i: number, j: number) =>
+		Math.hypot(
+			positions[i * 3] - positions[j * 3],
+			positions[i * 3 + 1] - positions[j * 3 + 1],
+			positions[i * 3 + 2] - positions[j * 3 + 2]
+		) <=
+		diagonal * 1e-12
+	const push = (a: number, b: number, c: number) => {
+		// Singular sides (sphere poles) collapse a grid row to one point.
+		if (same(a, b) || same(b, c) || same(a, c)) return
+		if (reversed) indices.push(a, c, b)
+		else indices.push(a, b, c)
+	}
+	for (let u = 0; u < su; u++)
+		for (let v = 0; v < sv; v++) {
+			const a = u * (sv + 1) + v,
+				b = a + sv + 1
+			push(a, b, a + 1)
+			push(a + 1, b, b + 1)
 		}
-	for (let u = 0; u < steps; u++)
-		for (let v = 0; v < steps; v++) {
-			const a = u * (steps + 1) + v,
-				b = a + steps + 1
-			indices.push(a, b, a + 1, a + 1, b, b + 1)
-		}
-	if (reversed)
-		for (let i = 0; i < indices.length; i += 3)
-			[indices[i + 1], indices[i + 2]] = [indices[i + 2], indices[i + 1]]
 	return { positions, indices }
 }
 

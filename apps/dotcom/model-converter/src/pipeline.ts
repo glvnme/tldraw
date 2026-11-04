@@ -18,6 +18,7 @@ import type { RhinoScene } from './threedm'
 const require = createRequire(import.meta.url)
 const CONVERTER_VERSION: string = require('../package.json').version
 const GLTFPACK_VERSION: string = require('gltfpack/package.json').version
+const RHINO3DM_VERSION: string = require('rhino3dm/package.json').version
 
 // -mm bakes repeated meshes into one (gltfpack otherwise keeps deduplicated IFC geometry as
 // instances, a draw call each). No -kn: kept nodes block merging and inflate output many times
@@ -132,7 +133,7 @@ async function prepareInput(
 				bytes: writeGlb(rhino.scene),
 				transform: rhino.transform,
 				units: 'm',
-				versions: ['rhino3dm 8.35.0'],
+				versions: [`rhino3dm ${RHINO3DM_VERSION}`],
 				rhino,
 			}
 		}

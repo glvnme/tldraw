@@ -15,6 +15,8 @@ import { MODEL_MAX_NAME_LENGTH } from './modelConfig'
 
 const STAGES: readonly Model3dConvertStage[] = ['fetching', 'parsing', 'optimizing', 'uploading']
 const UNITS: readonly Model3dManifest['units'][] = ['m', 'mm', 'cm', 'in', 'ft', 'unknown']
+const MANIFEST_MAX_TEXT_LENGTH = 256
+const MANIFEST_MAX_WARNINGS = 16
 
 type Obj = Record<string, unknown>
 
@@ -126,22 +128,24 @@ export function parseModel3dManifest(value: unknown): Model3dManifest | null {
 	if (value.version === 2) {
 		const { source, coverage, features, warnings } = value
 		const hash = (v: unknown) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v)
+		// File metadata is shown and stored as is, so a hostile file must not make it large.
+		const text = (v: unknown) => typeof v === 'string' && v.length <= MANIFEST_MAX_TEXT_LENGTH
 		if (
 			!isObj(source) ||
-			typeof source.filename !== 'string' ||
-			/[\\/]/.test(source.filename) ||
+			!text(source.filename) ||
+			/[\\/]/.test(source.filename as string) ||
 			!isCount(source.bytes) ||
 			!hash(source.sha256) ||
 			source.format !== value.sourceFormat ||
-			typeof source.formatVersion !== 'string' ||
+			!text(source.formatVersion) ||
 			source.provenance !== 'service' ||
 			!isObj(source.authoring) ||
-			typeof source.authoring.application !== 'string' ||
-			typeof source.authoring.details !== 'string' ||
+			!text(source.authoring.application) ||
+			!text(source.authoring.details) ||
 			!isObj(source.document) ||
 			!isCount(source.document.revision) ||
-			typeof source.document.createdBy !== 'string' ||
-			typeof source.document.lastEditedBy !== 'string' ||
+			!text(source.document.createdBy) ||
+			!text(source.document.lastEditedBy) ||
 			!isVec3(source.basePoint) ||
 			(source.georeference !== undefined &&
 				(!isObj(source.georeference) ||
@@ -149,7 +153,7 @@ export function parseModel3dManifest(value: unknown): Model3dManifest | null {
 						Number.isFinite((source.georeference as Obj)[key])
 					))) ||
 			!isObj(source.units) ||
-			typeof source.units.name !== 'string' ||
+			!text(source.units.name) ||
 			typeof source.units.metresPerUnit !== 'number' ||
 			!Number.isFinite(source.units.metresPerUnit) ||
 			source.units.metresPerUnit <= 0 ||
@@ -175,6 +179,7 @@ export function parseModel3dManifest(value: unknown): Model3dManifest | null {
 			features.attribute !== '_BATCHID' ||
 			features.storage !== 'glb-asset-extras' ||
 			!Array.isArray(warnings) ||
+			warnings.length > MANIFEST_MAX_WARNINGS ||
 			!warnings.every(
 				(warning) =>
 					isObj(warning) &&
@@ -185,6 +190,7 @@ export function parseModel3dManifest(value: unknown): Model3dManifest | null {
 						'approximate_mesh',
 						'unsupported_entity',
 						'instance_depth_limit',
+						'near_empty',
 					].includes(warning.code as string)
 			) ||
 			!hash(value.glbSha256)

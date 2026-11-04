@@ -99,6 +99,7 @@ export interface Model3dManifestV2 extends Omit<Model3dManifestV1, 'version' | '
 			| 'approximate_mesh'
 			| 'unsupported_entity'
 			| 'instance_depth_limit'
+			| 'near_empty'
 		count: number
 	}[]
 	features: { count: number; attribute: '_BATCHID'; storage: 'glb-asset-extras' }

@@ -345,6 +345,54 @@ describe('3DM conversion', () => {
 		})
 	})
 
+	it('ignores curves when it measures coverage', async () => {
+		const bytes = documentBytes((doc) => {
+			addTriangle(doc, 'Wall')
+			const line = new rhino.LineCurve([0, 0, 0], [1000, 0, 0]),
+				attributes = new rhino.ObjectAttributes()
+			try {
+				doc.objects().add(line, attributes)
+			} finally {
+				release(line)
+				release(attributes)
+			}
+		})
+		const { coverage, warnings } = await threedmToScene(bytes, LIMITS)
+		expect(coverage).toMatchObject({ sourceObjects: 1, renderedObjects: 1, skippedObjects: 0 })
+		// One triangle is all the file holds, which the review flags rather than shows as complete.
+		expect(warnings).toEqual([{ code: 'near_empty', count: 1 }])
+	})
+
+	it('refuses more objects than the cap', async () => {
+		const bytes = documentBytes((doc) => {
+			addTriangle(doc, 'First')
+			addTriangle(doc, 'Second')
+		})
+		await expect(threedmToScene(bytes, { ...LIMITS, maxObjects: 1 })).rejects.toMatchObject({
+			code: 'too_large',
+		})
+	})
+
+	it('caps user strings and names', async () => {
+		const bytes = documentBytes((doc) => {
+			const mesh = triangle(),
+				attributes = new rhino.ObjectAttributes()
+			try {
+				attributes.name = 'n'.repeat(1000)
+				attributes.layerIndex = 0
+				for (let i = 0; i < 100; i++) attributes.setUserString(`key${i}`, 'v'.repeat(5000))
+				doc.objects().addMesh(mesh, attributes)
+			} finally {
+				release(mesh)
+				release(attributes)
+			}
+		})
+		const [feature] = (await threedmToScene(bytes, LIMITS)).scene.weave!.features
+		expect(feature.name).toHaveLength(256)
+		expect(Object.keys(feature.userStrings)).toHaveLength(64)
+		expect(Object.values(feature.userStrings).every((value) => value.length === 2048)).toBe(true)
+	})
+
 	it('rejects a document with no supported geometry', async () => {
 		const bytes = documentBytes(() => {})
 		await expect(threedmToScene(bytes, LIMITS)).rejects.toMatchObject({ code: 'no_render_meshes' })
