@@ -1,8 +1,14 @@
 import { Model3dVec3 } from './camera'
 
-export type Model3dSourceFormat = 'ifc' | 'glb' | 'obj' | 'stl'
+export type Model3dSourceFormat = '3dm' | 'ifc' | 'glb' | 'obj' | 'stl'
 
-export const MODEL3D_SOURCE_FORMATS: readonly Model3dSourceFormat[] = ['ifc', 'glb', 'obj', 'stl']
+export const MODEL3D_SOURCE_FORMATS: readonly Model3dSourceFormat[] = [
+	'3dm',
+	'ifc',
+	'glb',
+	'obj',
+	'stl',
+]
 
 export interface Model3dManifestMesh {
 	name: string
@@ -30,4 +36,73 @@ export interface Model3dManifestV1 {
 	sourceFormat: Model3dSourceFormat
 }
 
-export type Model3dManifest = Model3dManifestV1
+export interface Model3dFeature {
+	id: number
+	sourceId: string
+	sourceIdKind: 'rhino-guid'
+	name: string
+	type: string
+	layerId: string
+	instancePath: string[]
+	userStrings: Record<string, string>
+	meshedBy: 'rhino' | 'weave' | 'mixed'
+}
+
+export interface Model3dCoverage {
+	sourceObjects: number
+	renderedObjects: number
+	skippedObjects: number
+	hiddenObjects: number
+	missingFaces: number
+	fallbackFaces: number
+}
+
+export interface Model3dSourceReference {
+	filename: string
+	bytes: number
+	sha256: string
+	format: Model3dSourceFormat
+	formatVersion: string
+	authoring: { application: string; details: string }
+	document: {
+		revision: number
+		createdBy: string
+		lastEditedBy: string
+		createdAt?: string
+		modifiedAt?: string
+	}
+	basePoint: number[]
+	georeference?: { latitude: number; longitude: number; elevation: number }
+	units: { name: string; metresPerUnit: number; basis: 'file' | 'assumed' }
+	counts: {
+		objects: number
+		rendered: number
+		skipped: number
+		layers: number
+		definitions: number
+	}
+	provenance: 'service'
+}
+
+export interface Model3dManifestV2 extends Omit<Model3dManifestV1, 'version' | 'transform'> {
+	version: 2
+	transform: Model3dManifestV1['transform'] & {
+		/** Column-major matrix from original file coordinates to Y-up metres. */
+		sourceToModel: number[]
+	}
+	source: Model3dSourceReference
+	coverage: Model3dCoverage
+	warnings: {
+		code:
+			| 'units_assumed'
+			| 'missing_render_mesh'
+			| 'approximate_mesh'
+			| 'unsupported_entity'
+			| 'instance_depth_limit'
+		count: number
+	}[]
+	features: { count: number; attribute: '_BATCHID'; storage: 'glb-asset-extras' }
+	glbSha256: string
+}
+
+export type Model3dManifest = Model3dManifestV1 | Model3dManifestV2

@@ -30,6 +30,10 @@ export interface GlbScene {
 	meshes: GlbMesh[]
 	materials: Rgba[]
 	nodes: GlbNode[]
+	weave?: {
+		features: import('@tldraw/dotcom-shared').Model3dFeature[]
+		layers: { id: string; name: string; parentId: string }[]
+	}
 }
 
 const pad4 = (n: number) => (4 - (n % 4)) % 4
@@ -101,7 +105,11 @@ export function writeGlb(scene: GlbScene): Uint8Array {
 	}))
 
 	const json = {
-		asset: { version: '2.0', generator: '@tldraw/model-converter' },
+		asset: {
+			version: '2.0',
+			generator: '@tldraw/model-converter',
+			...(scene.weave ? { extras: { weave: scene.weave } } : {}),
+		},
 		scene: 0,
 		scenes: [{ nodes: nodes.map((_, i) => i) }],
 		nodes,
@@ -150,6 +158,7 @@ export function vec3Bounds(values: Float32Array) {
 
 /** The glTF JSON as written by gltfpack or this writer; only the fields the converter reads. */
 export interface GltfJson {
+	asset?: { extras?: { weave?: GlbScene['weave'] } }
 	extensionsUsed?: string[]
 	extensionsRequired?: string[]
 	scene?: number

@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import type {
 	Model3dConvertJob,
 	Model3dConvertStage,
 	Model3dManifest,
 	Model3dSourceFormat,
+	Model3dManifestV2,
 } from '@tldraw/dotcom-shared'
 import { pack } from 'gltfpack'
 import { ConvertError } from './errors'
@@ -11,6 +13,7 @@ import { readGlb, Rgba, writeGlb } from './glb'
 import { summarizeGltf } from './gltfInfo'
 import { ifcToScene } from './ifc'
 import { computeFlatNormals, parseStl } from './stl'
+import type { RhinoScene } from './threedm'
 
 const require = createRequire(import.meta.url)
 const CONVERTER_VERSION: string = require('../package.json').version
@@ -38,13 +41,15 @@ interface PackInput {
 	transform: Model3dManifest['transform']
 	units: Model3dManifest['units']
 	versions: string[]
+	rhino?: RhinoScene
 }
 
 export async function convertModel(
 	source: Uint8Array,
 	format: Model3dSourceFormat,
 	limits: Limits,
-	onStage: OnStage = () => {}
+	onStage: OnStage = () => {},
+	sourceName = 'model.3dm'
 ): Promise<ConvertResult> {
 	if (source.byteLength > limits.maxSourceBytes) {
 		throw new ConvertError('too_large', `Source is larger than ${limits.maxSourceBytes} bytes`)
@@ -67,26 +72,46 @@ export async function convertModel(
 		throw new ConvertError('too_large', `Model has more than ${limits.maxTriangles} triangles`)
 	}
 
-	return {
-		glb,
-		manifest: {
-			version: 1,
-			bounds: summary.bounds,
-			units: input.units,
-			transform: input.transform,
-			triangleCount: summary.triangleCount,
-			nodeCount: summary.nodeCount,
-			meshes: summary.meshes,
-			textureBytesEstimate: summary.textureBytesEstimate,
-			glbBytes: glb.byteLength,
-			converter: {
-				name: '@tldraw/model-converter',
-				version: [CONVERTER_VERSION, `gltfpack ${GLTFPACK_VERSION}`, ...input.versions].join(', '),
-				args,
-			},
-			sourceFormat: format,
+	const base = {
+		version: 1,
+		bounds: summary.bounds,
+		units: input.units,
+		transform: input.transform,
+		triangleCount: summary.triangleCount,
+		nodeCount: summary.nodeCount,
+		meshes: summary.meshes,
+		textureBytesEstimate: summary.textureBytesEstimate,
+		glbBytes: glb.byteLength,
+		converter: {
+			name: '@tldraw/model-converter',
+			version: [CONVERTER_VERSION, `gltfpack ${GLTFPACK_VERSION}`, ...input.versions].join(', '),
+			args,
 		},
+		sourceFormat: format,
+	} as const
+	if (!input.rhino) return { glb, manifest: base }
+	const { source: reference, coverage, warnings, transform, scene } = input.rhino
+	const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex')
+	const manifest: Model3dManifestV2 = {
+		...base,
+		version: 2,
+		transform,
+		source: {
+			...reference,
+			filename: sourceName.split(/[\\/]/).pop()!.slice(0, 256),
+			bytes: source.byteLength,
+			sha256: sha256(source),
+		},
+		coverage,
+		warnings,
+		features: {
+			count: scene.weave!.features.length,
+			attribute: '_BATCHID',
+			storage: 'glb-asset-extras',
+		},
+		glbSha256: sha256(glb),
 	}
+	return { glb, manifest }
 }
 
 async function prepareInput(
@@ -96,6 +121,21 @@ async function prepareInput(
 	onStage: OnStage
 ): Promise<PackInput> {
 	switch (format) {
+		case '3dm': {
+			const { threedmToScene } = await import('./threedm')
+			const rhino = await threedmToScene(source, {
+				maxTriangles: limits.maxTriangles,
+				onProgress: throttle((fraction) => onStage('parsing', 0.1 + 0.35 * fraction)),
+			})
+			return {
+				name: 'in.glb',
+				bytes: writeGlb(rhino.scene),
+				transform: rhino.transform,
+				units: 'm',
+				versions: ['rhino3dm 8.35.0'],
+				rhino,
+			}
+		}
 		case 'ifc': {
 			const ifc = await ifcToScene(source, {
 				maxTriangles: limits.maxTriangles,

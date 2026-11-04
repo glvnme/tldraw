@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { extname } from 'node:path'
+import { basename, extname } from 'node:path'
 import type { Model3dSourceFormat } from '@tldraw/dotcom-shared'
 import { errorCodeOf, log } from './errors'
 import { parseConvertJob } from './job'
@@ -8,7 +8,7 @@ import { convertModel } from './pipeline'
 import { childExecArgv, JOB_EXEC_ARGV, runJobInChild } from './runner'
 
 const USAGE = `Usage:
-  convert <input.(ifc|stl|obj|glb)> <output.glb>   convert a file, write <output>.manifest.json
+  convert <input.(3dm|ifc|stl|obj|glb)> <output.glb>   convert a file, write <output>.manifest.json
   once <job.json>                                  run one Model3dConvertJob against the worker`
 
 const LIMITS = {
@@ -30,8 +30,12 @@ async function convert(input: string, output: string) {
 	const source = new Uint8Array(readFileSync(input))
 	const started = performance.now()
 	try {
-		const { glb, manifest } = await convertModel(source, format, LIMITS, (stage, progress) =>
-			console.error(`${stage} ${Math.round(progress * 100)}%`)
+		const { glb, manifest } = await convertModel(
+			source,
+			format,
+			LIMITS,
+			(stage, progress) => console.error(`${stage} ${Math.round(progress * 100)}%`),
+			basename(input)
 		)
 		writeFileSync(output, glb)
 		writeFileSync(

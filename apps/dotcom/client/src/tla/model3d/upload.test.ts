@@ -7,6 +7,7 @@ describe('getModel3dFormat', () => {
 		['chair.glb', 'glb'],
 		['mesh.v2.obj', 'obj'],
 		['part.stl', 'stl'],
+		['Building.3DM', '3dm'],
 		['scene.gltf', null],
 		['ifc', null],
 		['notes.txt', null],

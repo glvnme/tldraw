@@ -14,6 +14,8 @@ export const MODEL3D_ERROR_CODES = [
 	'not_found',
 	'bad_request',
 	'unsupported_format',
+	'no_render_meshes',
+	'source_required',
 	'draco_unsupported',
 	'too_large',
 	'invalid_state',
@@ -110,6 +112,7 @@ export interface Model3dConvertJob {
 	sourceFormat: Model3dSourceFormat
 	/** GET with `Authorization: Bearer <token>`. */
 	sourceUrl: string
+	sourceName?: string
 	/** PUT `${artifactUrlBase}/model.glb` and `${artifactUrlBase}/manifest.json`. */
 	artifactUrlBase: string
 	/** POST `Model3dJobStatusRequest`. */

@@ -10,6 +10,7 @@ import { convertModel, OnStage } from './pipeline'
 
 // dotcom-shared is imported for types only; at runtime it would pull in the whole app schema.
 const SOURCE_FORMATS: readonly string[] = [
+	'3dm',
 	'ifc',
 	'glb',
 	'obj',
@@ -31,6 +32,7 @@ export function parseConvertJob(value: unknown): Model3dConvertJob | null {
 	if (
 		!isString(job.modelId) ||
 		!SOURCE_FORMATS.includes(job.sourceFormat) ||
+		(job.sourceName !== undefined && !isString(job.sourceName)) ||
 		![job.sourceUrl, job.artifactUrlBase, job.statusUrl, job.token].every(isString) ||
 		typeof limits !== 'object' ||
 		limits === null ||
@@ -137,7 +139,13 @@ export async function runJob(job: Model3dConvertJob) {
 	try {
 		progress('fetching', 0)
 		const source = await fetchSource(job)
-		const { glb, manifest } = await convertModel(source, job.sourceFormat, job.limits, progress)
+		const { glb, manifest } = await convertModel(
+			source,
+			job.sourceFormat,
+			job.limits,
+			progress,
+			job.sourceName
+		)
 		progress('uploading', 0.9)
 		await putArtifact(job, 'model.glb', glb)
 		await putArtifact(job, 'manifest.json', new TextEncoder().encode(JSON.stringify(manifest)))

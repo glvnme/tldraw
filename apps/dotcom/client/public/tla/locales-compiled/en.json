@@ -155,6 +155,12 @@
       "value": "Something went wrong loading this invite. Please try again."
     }
   ],
+  "0cb64e6364": [
+    {
+      "type": 0,
+      "value": "The file has no supported units. Millimetres were used."
+    }
+  ],
   "0d1f2bb523": [
     {
       "type": 0,
@@ -189,6 +195,12 @@
     {
       "type": 0,
       "value": "Unpin file"
+    }
+  ],
+  "1317be4d04": [
+    {
+      "type": 0,
+      "value": "Could not prepare the preview."
     }
   ],
   "13ddd375ad": [
@@ -340,6 +352,18 @@
       "value": "Search..."
     }
   ],
+  "2addfc5a31": [
+    {
+      "type": 0,
+      "value": "The original file was deleted. Select the file again to convert it."
+    }
+  ],
+  "2ca3bb5764": [
+    {
+      "type": 0,
+      "value": "Select the file again"
+    }
+  ],
   "2d3cdcfdd4": [
     {
       "type": 0,
@@ -434,6 +458,12 @@
     {
       "type": 0,
       "value": "Move this board into a workspace to add models."
+    }
+  ],
+  "3c51b55b8f": [
+    {
+      "type": 0,
+      "value": "Some model parts are missing. In Rhino, use a Shaded viewport and save again."
     }
   ],
   "3c5e891bff": [
@@ -1471,6 +1501,12 @@
       "value": "Regenerate"
     }
   ],
+  "b25b4169a1": [
+    {
+      "type": 0,
+      "value": "No surfaces could be converted. In Rhino, use a Shaded viewport and save, or export GLB, OBJ, or STL."
+    }
+  ],
   "b2c3c2e30c": [
     {
       "type": 0,
@@ -1789,6 +1825,12 @@
       "value": "Lock view and sketch"
     }
   ],
+  "d148f5b7b7": [
+    {
+      "type": 0,
+      "value": "Could not publish the view. Try again."
+    }
+  ],
   "d3d2e61733": [
     {
       "type": 0,
@@ -1881,6 +1923,12 @@
     {
       "type": 0,
       "value": "Leave workspace"
+    }
+  ],
+  "dcf0c6d2e8": [
+    {
+      "type": 0,
+      "value": "Some surfaces use an approximate mesh."
     }
   ],
   "de9af1da1a": [
