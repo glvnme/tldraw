@@ -92,7 +92,7 @@ export function parseJobStatusRequest(body: unknown): Model3dJobStatusRequest | 
 }
 
 export function parseModel3dManifest(value: unknown): Model3dManifest | null {
-	if (!isObj(value) || value.version !== 1) return null
+	if (!isObj(value) || (value.version !== 1 && value.version !== 2)) return null
 	const { bounds, transform, converter, meshes } = value
 	if (!isObj(bounds) || !isVec3(bounds.min) || !isVec3(bounds.max)) return null
 	if (!isOneOf(UNITS, value.units)) return null
@@ -123,5 +123,73 @@ export function parseModel3dManifest(value: unknown): Model3dManifest | null {
 		return null
 	}
 	if (!isModel3dSourceFormat(value.sourceFormat)) return null
+	if (value.version === 2) {
+		const { source, coverage, features, warnings } = value
+		const hash = (v: unknown) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v)
+		if (
+			!isObj(source) ||
+			typeof source.filename !== 'string' ||
+			/[\\/]/.test(source.filename) ||
+			!isCount(source.bytes) ||
+			!hash(source.sha256) ||
+			source.format !== value.sourceFormat ||
+			typeof source.formatVersion !== 'string' ||
+			source.provenance !== 'service' ||
+			!isObj(source.authoring) ||
+			typeof source.authoring.application !== 'string' ||
+			typeof source.authoring.details !== 'string' ||
+			!isObj(source.document) ||
+			!isCount(source.document.revision) ||
+			typeof source.document.createdBy !== 'string' ||
+			typeof source.document.lastEditedBy !== 'string' ||
+			!isVec3(source.basePoint) ||
+			(source.georeference !== undefined &&
+				(!isObj(source.georeference) ||
+					!['latitude', 'longitude', 'elevation'].every((key) =>
+						Number.isFinite((source.georeference as Obj)[key])
+					))) ||
+			!isObj(source.units) ||
+			typeof source.units.name !== 'string' ||
+			typeof source.units.metresPerUnit !== 'number' ||
+			!Number.isFinite(source.units.metresPerUnit) ||
+			source.units.metresPerUnit <= 0 ||
+			!['file', 'assumed'].includes(source.units.basis as string) ||
+			!isObj(source.counts) ||
+			!['objects', 'rendered', 'skipped', 'layers', 'definitions'].every((key) =>
+				isCount((source.counts as Obj)[key])
+			) ||
+			!Array.isArray(transform.sourceToModel) ||
+			transform.sourceToModel.length !== 16 ||
+			!transform.sourceToModel.every(Number.isFinite) ||
+			!isObj(coverage) ||
+			![
+				'sourceObjects',
+				'renderedObjects',
+				'skippedObjects',
+				'hiddenObjects',
+				'missingFaces',
+				'fallbackFaces',
+			].every((key) => isCount(coverage[key])) ||
+			!isObj(features) ||
+			!isCount(features.count) ||
+			features.attribute !== '_BATCHID' ||
+			features.storage !== 'glb-asset-extras' ||
+			!Array.isArray(warnings) ||
+			!warnings.every(
+				(warning) =>
+					isObj(warning) &&
+					isCount(warning.count) &&
+					[
+						'units_assumed',
+						'missing_render_mesh',
+						'approximate_mesh',
+						'unsupported_entity',
+						'instance_depth_limit',
+					].includes(warning.code as string)
+			) ||
+			!hash(value.glbSha256)
+		)
+			return null
+	}
 	return value as unknown as Model3dManifest
 }

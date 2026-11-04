@@ -275,7 +275,8 @@ async function completeModelUpload(
 		// The client's retry: run the conversion again from the stored source. The new attempt writes
 		// under its own job id, so the old attempt's artifacts are left where they are.
 		if (model.status === 'failed') {
-			if (!(await bucket.head(modelKeys.source(modelId)))) fail(409, 'invalid_state')
+			if (model.sourceFormat === '3dm' || !(await bucket.head(modelKeys.source(modelId))))
+				fail(409, 'source_required')
 			const claimed = await db
 				.updateTable('model')
 				.set({
@@ -358,6 +359,8 @@ async function expireAbandonedJob(
 				? await probeConverterJob(env, model)
 				: null
 	if (!errorCode) return model
+	if (model.sourceFormat === '3dm' && model.jobId)
+		await env.QUEUE.send({ type: 'model-source-delete', modelId: model.id, jobId: model.jobId })
 	const expired = await db
 		.updateTable('model')
 		.set({ status: 'failed', stage: null, errorCode, updatedAt: Date.now() })
@@ -376,6 +379,11 @@ async function getModelStatus(request: IRequest, env: Environment): Promise<Resp
 	const model = await withDb(env, async (db) =>
 		expireAbandonedJob(env, db, await loadModelForMember(db, modelId, userId))
 	)
+	if (model.sourceFormat === '3dm' && ['ready', 'failed'].includes(model.status)) {
+		await getBucket(env)
+			.delete(modelKeys.source(modelId))
+			.catch((error) => console.error('3DM source deletion pending', error))
+	}
 	const response: GetModelStatusResponse = {
 		modelId: model.id,
 		name: model.name,
@@ -430,7 +438,8 @@ function requireCurrentJob(model: TlaModel, jobId: string) {
 
 async function getModelSource(request: IRequest, env: Environment): Promise<Response> {
 	const modelId = modelIdParam(request)
-	await requireJobToken(request, env, modelId)
+	const jobId = await requireJobToken(request, env, modelId)
+	await withDb(env, async (db) => requireCurrentJob(await loadModel(db, modelId), jobId))
 	const object = await getBucket(env).get(modelKeys.source(modelId))
 	if (!object) fail(404, 'not_found')
 	return new Response(object.body, {
@@ -453,7 +462,8 @@ async function putModelArtifact(request: IRequest, env: Environment): Promise<Re
 	if (length === 0 || !request.body) fail(400, 'bad_request', 'Empty artifact')
 
 	return withDb(env, async (db) => {
-		requireCurrentJob(await loadModel(db, modelId), jobId)
+		const model = await loadModel(db, modelId)
+		requireCurrentJob(model, jobId)
 		const key = modelKeys.artifact(modelId, jobId, name)
 
 		if (name === 'model.glb') {
@@ -469,6 +479,12 @@ async function putModelArtifact(request: IRequest, env: Environment): Promise<Re
 				manifest = null
 			}
 			if (!manifest) fail(400, 'bad_request', 'Invalid manifest')
+			if (
+				manifest.sourceFormat !== model.sourceFormat ||
+				(model.sourceFormat === '3dm' &&
+					(manifest.version !== 2 || manifest.source.bytes !== model.sourceBytes))
+			)
+				fail(400, 'bad_request', 'Manifest does not match the source')
 			await bucket.put(key, text, { httpMetadata: { contentType: 'application/json' } })
 			await db
 				.updateTable('model')
@@ -514,6 +530,9 @@ async function postModelJobStatus(request: IRequest, env: Environment): Promise<
 				update = { status: 'failed', stage: null, errorCode: body.errorCode }
 				break
 		}
+		if (model.sourceFormat === '3dm' && body.status !== 'converting') {
+			await env.QUEUE.send({ type: 'model-source-delete', modelId, jobId })
+		}
 		const updated = await db
 			.updateTable('model')
 			.set({ ...update, updatedAt: now })
@@ -523,6 +542,11 @@ async function postModelJobStatus(request: IRequest, env: Environment): Promise<
 			.returning('id')
 			.executeTakeFirst()
 		if (!updated) fail(409, 'invalid_state')
+		if (model.sourceFormat === '3dm' && body.status !== 'converting') {
+			await bucket
+				.delete(modelKeys.source(modelId))
+				.catch((error) => console.error('3DM source deletion queued', error))
+		}
 		const response: Model3dJobStatusResponse = { ok: true }
 		return Response.json(response)
 	})
@@ -538,6 +562,7 @@ export async function buildConvertJob(
 	return {
 		modelId: model.id,
 		sourceFormat: model.sourceFormat,
+		sourceName: model.name,
 		sourceUrl: origin + model3dPaths.source(model.id),
 		artifactUrlBase: `${origin}${model3dPaths.status(model.id)}/artifacts`,
 		statusUrl: origin + model3dPaths.jobStatus(model.id),
@@ -564,6 +589,8 @@ async function dispatchJob(env: Environment, model: TlaModel) {
 	} catch (error) {
 		console.error(`model converter unreachable for job ${model.id}`, error)
 	}
+	if (model.sourceFormat === '3dm' && model.jobId)
+		await env.QUEUE.send({ type: 'model-source-delete', modelId: model.id, jobId: model.jobId })
 	await withDb(env, (db) =>
 		db
 			.updateTable('model')
@@ -584,3 +611,20 @@ export const modelRoutes = createRouter<Environment>()
 	.get(MODEL3D_ROUTES.source, handle(getModelSource))
 	.put(MODEL3D_ROUTES.artifact, handle(putModelArtifact))
 	.post(MODEL3D_ROUTES.jobStatus, handle(postModelJobStatus))
+
+/** Queue delivery can precede the terminal commit; retry until that commit is visible. */
+export async function deleteModelSource(env: Environment, modelId: string, jobId: string) {
+	await withDb(env, async (db) => {
+		const model = await db
+			.selectFrom('model')
+			.selectAll()
+			.where('id', '=', modelId)
+			.executeTakeFirst()
+		if (!model || model.jobId !== jobId || model.sourceFormat !== '3dm') return
+		if (CONVERTING.includes(model.status)) throw new Error('Model conversion has not finished')
+		if (model.status === 'ready' || model.status === 'failed')
+			await getBucket(env)
+				.delete(modelKeys.source(modelId))
+				.catch((error) => console.error('3DM source deletion pending', error))
+	})
+}

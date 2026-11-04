@@ -373,4 +373,13 @@ export interface OgImageRenderQueueMessage {
 	followUp?: boolean
 }
 
-export type QueueMessage = AssetUploadQueueMessage | OgImageRenderQueueMessage
+export interface ModelSourceDeleteQueueMessage {
+	type: 'model-source-delete'
+	modelId: string
+	jobId: string
+}
+
+export type QueueMessage =
+	| AssetUploadQueueMessage
+	| OgImageRenderQueueMessage
+	| ModelSourceDeleteQueueMessage

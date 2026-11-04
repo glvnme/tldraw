@@ -37,6 +37,7 @@ import { getRoomSnapshot } from './routes/getRoomSnapshot'
 import { getSocialPreview } from './routes/getSocialPreview'
 import { joinExistingRoom } from './routes/joinExistingRoom'
 import { modelRoutes } from './routes/models/modelRoutes'
+import { deleteModelSource } from './routes/models/modelRoutes'
 import { submitFeedback } from './routes/submitFeedback'
 import { acceptInvite } from './routes/tla/acceptInvite'
 import { createFiles } from './routes/tla/createFiles'
@@ -443,6 +444,16 @@ export default class Worker extends WorkerEntrypoint<Environment> {
 							message.retry()
 						}
 						break
+					case 'model-source-delete': {
+						try {
+							await deleteModelSource(this.env, message.body.modelId, message.body.jobId)
+							message.ack()
+						} catch (error) {
+							this.reportQueueFailureOnFinalAttempt(message, error)
+							message.retry({ delaySeconds: QUEUE_BASE_DELAY ** message.attempts })
+						}
+						break
+					}
 					case 'asset-upload': {
 						const { objectName, fileId, userId } = message.body
 						try {

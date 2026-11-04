@@ -1,6 +1,7 @@
 import {
 	CreateModelResponse,
 	Model3dManifest,
+	Model3dManifestV2,
 	signModel3dJobToken,
 	TlaModel,
 } from '@tldraw/dotcom-shared'
@@ -15,7 +16,7 @@ vi.mock('../../utils/tla/getAuth', () => ({ getAuth: vi.fn() }))
 
 const { createPostgresConnectionPool } = await import('../../postgres')
 const { getAuth } = await import('../../utils/tla/getAuth')
-const { modelRoutes } = await import('./modelRoutes')
+const { modelRoutes, deleteModelSource } = await import('./modelRoutes')
 
 const SECRET = 'test-model-job-secret'
 const USER_ID = 'user-1'
@@ -97,6 +98,40 @@ const MANIFEST: Model3dManifest = {
 	sourceFormat: 'ifc',
 }
 
+const RHINO_MANIFEST: Model3dManifestV2 = {
+	...MANIFEST,
+	version: 2,
+	sourceFormat: '3dm',
+	transform: {
+		...MANIFEST.transform,
+		sourceToModel: [1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+	},
+	source: {
+		filename: 'site.3dm',
+		bytes: 3,
+		sha256: 'a'.repeat(64),
+		format: '3dm',
+		formatVersion: '80',
+		authoring: { application: 'Rhino', details: '8' },
+		document: { revision: 1, createdBy: '', lastEditedBy: '' },
+		basePoint: [0, 0, 0],
+		units: { name: 'Meters', metresPerUnit: 1, basis: 'file' },
+		counts: { objects: 1, rendered: 1, skipped: 0, layers: 1, definitions: 0 },
+		provenance: 'service',
+	},
+	coverage: {
+		sourceObjects: 1,
+		renderedObjects: 1,
+		skippedObjects: 0,
+		hiddenObjects: 0,
+		missingFaces: 0,
+		fallbackFaces: 0,
+	},
+	features: { count: 1, attribute: '_BATCHID', storage: 'glb-asset-extras' },
+	warnings: [],
+	glbSha256: 'b'.repeat(64),
+}
+
 let env: Environment
 let waitUntil: ReturnType<typeof vi.fn>
 
@@ -115,6 +150,7 @@ async function bearer(modelId = MODEL_ID, expiresAt = Date.now() + 60_000, jobId
 beforeEach(() => {
 	env = {
 		MODELS: createModelsBucket(),
+		QUEUE: { send: vi.fn().mockResolvedValue(undefined) },
 		MODEL_JOB_SECRET: SECRET,
 		BOTCOM_POSTGRES_POOLED_CONNECTION_STRING: 'postgres://test',
 	} as unknown as Environment
@@ -133,6 +169,7 @@ describe('job token', () => {
 	})
 
 	it('serves the source to a valid token', async () => {
+		mockDb([[modelRow()]])
 		const response = await call(`/app/models/${MODEL_ID}/source`, { headers: await bearer() })
 		expect(response.status).toBe(200)
 		expect(response.headers.get('content-length')).toBe('3')
@@ -187,6 +224,87 @@ describe('artifacts and job status', () => {
 		expect(db.queries.at(-1)!.sql).toMatch(/^update "model" set "manifest" = \$1/)
 		expect(db.queries.at(-1)!.sql).toContain('"jobId" = $')
 		expect(db.queries.at(-1)!.parameters).toEqual([MANIFEST, expect.any(Number), MODEL_ID, JOB_ID])
+	})
+
+	it('accepts the native 3DM manifest and rejects source mismatches', async () => {
+		for (const [sourceBytes, expected] of [
+			[3, 200],
+			[4, 400],
+		]) {
+			mockDb([[modelRow({ sourceFormat: '3dm', sourceBytes })], []])
+			const body = JSON.stringify(RHINO_MANIFEST)
+			const response = await call(`/app/models/${MODEL_ID}/artifacts/manifest.json`, {
+				method: 'PUT',
+				headers: { ...(await bearer()), 'content-length': String(body.length) },
+				body,
+			})
+			expect(response.status).toBe(expected)
+		}
+	})
+
+	it('rejects a v2 manifest with an invalid matrix or source hash', async () => {
+		for (const manifest of [
+			{ ...RHINO_MANIFEST, transform: { ...RHINO_MANIFEST.transform, sourceToModel: [1, 2] } },
+			{ ...RHINO_MANIFEST, source: { ...RHINO_MANIFEST.source, sha256: 'bad hash' } },
+		]) {
+			mockDb([[modelRow({ sourceFormat: '3dm' })]])
+			const body = JSON.stringify(manifest)
+			const response = await call(`/app/models/${MODEL_ID}/artifacts/manifest.json`, {
+				method: 'PUT',
+				headers: { ...(await bearer()), 'content-length': String(body.length) },
+				body,
+			})
+			expect(response.status).toBe(400)
+		}
+	})
+
+	it('refuses source access from a superseded job', async () => {
+		mockDb([[modelRow()]])
+		const response = await call(`/app/models/${MODEL_ID}/source`, {
+			headers: await bearer(MODEL_ID, Date.now() + 60_000, 'job-0'),
+		})
+		expect(response.status).toBe(409)
+	})
+
+	it.each(['ready', 'failed'] as const)(
+		'deletes a 3DM source after %s and queues cleanup before the commit',
+		async (status) => {
+			await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+			if (status === 'ready') {
+				await env.MODELS!.put(`m/${MODEL_ID}/${JOB_ID}/model.glb`, new Uint8Array([1, 2, 3, 4]))
+				await env.MODELS!.put(
+					`m/${MODEL_ID}/${JOB_ID}/manifest.json`,
+					JSON.stringify(RHINO_MANIFEST)
+				)
+			}
+			mockDb([[modelRow({ sourceFormat: '3dm', manifest: RHINO_MANIFEST })], [{ id: MODEL_ID }]])
+			const response = await call(`/app/models/${MODEL_ID}/job-status`, {
+				method: 'POST',
+				headers: await bearer(),
+				body: JSON.stringify(
+					status === 'ready' ? { status } : { status, errorCode: 'no_render_meshes' }
+				),
+			})
+			expect(response.status).toBe(200)
+			expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).toBeNull()
+			expect(env.QUEUE.send).toHaveBeenCalledWith({
+				type: 'model-source-delete',
+				modelId: MODEL_ID,
+				jobId: JOB_ID,
+			})
+		}
+	)
+
+	it('keeps source cleanup queued if R2 deletion fails', async () => {
+		mockDb([[modelRow({ sourceFormat: '3dm' })], [{ id: MODEL_ID }]])
+		vi.spyOn(env.MODELS!, 'delete').mockRejectedValueOnce(new Error('R2 unavailable'))
+		const response = await call(`/app/models/${MODEL_ID}/job-status`, {
+			method: 'POST',
+			headers: await bearer(),
+			body: JSON.stringify({ status: 'failed', errorCode: 'no_render_meshes' }),
+		})
+		expect(response.status).toBe(200)
+		expect(env.QUEUE.send).toHaveBeenCalledOnce()
 	})
 
 	it('refuses writes from a job that a retry has replaced', async () => {
@@ -580,5 +698,24 @@ describe('user routes', () => {
 		})
 		expect(await response.json()).toEqual({ status: 'converting' })
 		expect(waitUntil).not.toHaveBeenCalled()
+	})
+})
+
+describe('3DM source deletion queue', () => {
+	it('waits for the conversion commit', async () => {
+		mockDb([[modelRow({ sourceFormat: '3dm' })]])
+		await expect(deleteModelSource(env, MODEL_ID, JOB_ID)).rejects.toThrow('has not finished')
+	})
+	it('does not delete the source of a newer attempt', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		mockDb([[modelRow({ sourceFormat: '3dm', status: 'failed', jobId: 'new-job' })]])
+		await deleteModelSource(env, MODEL_ID, JOB_ID)
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).not.toBeNull()
+	})
+	it('deletes a source after terminal commit', async () => {
+		await env.MODELS!.put(`m/${MODEL_ID}/source`, new Uint8Array([1, 2, 3]))
+		mockDb([[modelRow({ sourceFormat: '3dm', status: 'failed' })]])
+		await deleteModelSource(env, MODEL_ID, JOB_ID)
+		expect(await env.MODELS!.head(`m/${MODEL_ID}/source`)).toBeNull()
 	})
 })
