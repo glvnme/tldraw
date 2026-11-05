@@ -24,6 +24,8 @@ import { fetch } from 'tldraw'
 
 export interface Model3dViewerEngine extends ViewerHandle {
 	fit(): void
+	/** Canvas zoom stretches the drawing buffer with CSS, so the buffer has to grow with it to stay sharp. */
+	setResolutionScale(scale: number): void
 	dispose(): void
 }
 
@@ -39,6 +41,8 @@ export interface Model3dViewerEngineOptions {
 }
 
 const SET_CAMERA_ANIMATION_MS = 450
+// Larger drawing buffers fail or exhaust GPU memory on integrated and older GPUs.
+const MAX_BUFFER_EDGE = 4096
 
 export async function createModel3dViewerEngine(
 	opts: Model3dViewerEngineOptions
@@ -138,10 +142,17 @@ export async function createModel3dViewerEngine(
 		camera.updateProjectionMatrix()
 	}
 
+	let resolutionScale = 1
 	const resize = () => {
 		const { clientWidth: w, clientHeight: h } = container
 		// Zero while sketch mode hides the overlay.
 		if (!w || !h) return
+		renderer.setPixelRatio(
+			Math.min(
+				Math.max(Math.min(window.devicePixelRatio, 2) * resolutionScale, 1),
+				MAX_BUFFER_EDGE / Math.max(w, h)
+			)
+		)
 		renderer.setSize(w, h, false)
 		aspect = w / h
 		updateProjection()
@@ -270,6 +281,13 @@ export async function createModel3dViewerEngine(
 			controls.update()
 			requestRender()
 			emitCameraChange()
+		},
+		setResolutionScale(scale) {
+			if (scale === resolutionScale) return
+			resolutionScale = scale
+			resize()
+			// Resizing clears the buffer, so a paused view must still redraw its still frame.
+			if (paused) renderNow()
 		},
 		getCamera,
 		setCamera(value, { animate = false } = {}) {
