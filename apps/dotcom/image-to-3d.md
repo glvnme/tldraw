@@ -242,8 +242,15 @@ The owner works from Mexico on a personal prototype that will not be monetized, 
 
 First runs on 2026-11-03 and 2026-11-04, through a dev-only test canvas at `/dev/image-to-3d` whose Vite middleware calls fal:
 
-- TRELLIS.2 on fal, house sample: 161 s end to end, a 22 MB GLB, about $0.30. Hunyuan3D 3.1 Pro and Tripo H3.1 are wired into the canvas but not yet run. Meshy 6 is not wired in.
+- TRELLIS.2 on fal, house sample: 161 s end to end, a 22 MB GLB, about $0.30. A later comparison run took 136 s for TRELLIS.2, 378 s for Tripo H3.1 and 392 s for Hunyuan3D 3.1 Pro. Meshy 6 is not wired in.
 - TripoSR on this CPU: 54 to 95 s per image at a 3.6 GB peak. With the dev stack running, the machine ran out of memory and the kernel killed TripoSR and other processes.
 - MoGe-2 ViT-S and Depth Anything 3 Small reliefs: unusable.
 
 The owner dropped all local inference. Removed from the design: relief mode and the mode choice, the depth model, `sourceView`, the `mode` column and the `onnxruntime-node` exception.
+
+The owner judged the fal objects poor for review. Two more paths were added to the test canvas on 2026-11-05:
+
+- World Labs Marble (`marble-1.0-draft`, `marble-1.1`) builds a whole scene from one photo. The draft run on the interior sample took 46 s and 230 credits (about $0.18). The canvas loads the free collider mesh, which has vertex colours but no textures, and links to the full world on marble.worldlabs.ai.
+- Claude and Codex massing: the CLI reads every selected image and returns a parts list (boxes, cylinders, cones, spheres, gables and footprint extrusions, in meters), which the dev server writes to GLB. Each run uses the owner's CLI plan, not a per-request charge. On the house sample, Claude Opus at high took 45 to 55 s and Codex took 91 s; Haiku at extra high took 276 s and Astra at medium 175 s. The model is a blocky massing study, not a detailed mesh.
+
+The generator decision (owner decision 1) now chooses between these three paths, not only between fal models.

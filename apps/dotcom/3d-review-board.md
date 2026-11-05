@@ -53,12 +53,12 @@ WebGPU waits because the r187 WebGPU backend draws `BatchedMesh` as a loop of `d
 
 Meshopt over Draco:
 
-| | Meshopt | Draco |
-| --- | --- | --- |
-| Decoder in three.js repo | 29 KB inline WASM | 192 KB WASM plus 58 KB wrapper |
-| Decode speed | 1 to 3 GB/s with WASM SIMD | slower; glTF-Transform calls meshopt "considerably faster" |
-| Vertex order | preserved | reordered, lossy |
-| Written by gltfpack | yes | no |
+|                          | Meshopt                    | Draco                                                      |
+| ------------------------ | -------------------------- | ---------------------------------------------------------- |
+| Decoder in three.js repo | 29 KB inline WASM          | 192 KB WASM plus 58 KB wrapper                             |
+| Decode speed             | 1 to 3 GB/s with WASM SIMD | slower; glTF-Transform calls meshopt "considerably faster" |
+| Vertex order             | preserved                  | reordered, lossy                                           |
+| Written by gltfpack      | yes                        | no                                                         |
 
 Meshopt output is meant to be brotli or gzip compressed on the wire. `model/gltf-binary` is not in Cloudflare's default compressible types, so the models host needs an explicit compression rule, or the converter stores pre-compressed objects with the right `Content-Encoding`.
 
@@ -78,21 +78,21 @@ Chunked delivery is deferred. 3D Tiles ADD refinement adds child content to pare
 
 ## Source formats and conversion
 
-| Format | Tool | License | Phase |
-| --- | --- | --- | --- |
-| IFC 2x3, 4, 4.3 | IfcConvert (IfcOpenShell) writes GLB; web-ifc as a fallback | LGPL-3.0; MPL-2.0 | v1 |
-| GLB, self-contained | glTF-Transform validate and decompress, then gltfpack | MIT | v1 |
-| OBJ, STL | OBJ through gltfpack directly; STL through assimp or trimesh to glTF first | MIT, BSD-3 | v1, after the main flow works |
-| glTF with external files | package validation and path safety first | MIT | phase 2 |
-| FBX | headless Blender (ufbx importer), separate process | GPL (process boundary) | phase 2 |
-| 3DM | rhino3dm, render meshes only | MIT | phase 2 |
-| DAE | assimp (Blender 5 removed COLLADA) | BSD-3 | phase 2 |
-| USD, USDZ | OpenUSD or Blender | Apache-2.0 | phase 2 |
-| STEP | OCCT | LGPL-2.1 | phase 2 |
-| RVT | Autodesk APS Model Derivative to IFC, then IfcConvert | paid | phase 2 |
-| SKP | no Linux SDK; users export FBX, OBJ or USDZ | n/a | phase 2 |
-| DWG, DXF | 2D underlays; 3D solids need ODA or APS | paid | later |
-| E57, LAS, LAZ | PDAL to COPC, separate point renderer | BSD | later |
+| Format                   | Tool                                                                       | License                | Phase                         |
+| ------------------------ | -------------------------------------------------------------------------- | ---------------------- | ----------------------------- |
+| IFC 2x3, 4, 4.3          | IfcConvert (IfcOpenShell) writes GLB; web-ifc as a fallback                | LGPL-3.0; MPL-2.0      | v1                            |
+| GLB, self-contained      | glTF-Transform validate and decompress, then gltfpack                      | MIT                    | v1                            |
+| OBJ, STL                 | OBJ through gltfpack directly; STL through assimp or trimesh to glTF first | MIT, BSD-3             | v1, after the main flow works |
+| glTF with external files | package validation and path safety first                                   | MIT                    | phase 2                       |
+| FBX                      | headless Blender (ufbx importer), separate process                         | GPL (process boundary) | phase 2                       |
+| 3DM                      | rhino3dm, render meshes only                                               | MIT                    | phase 2                       |
+| DAE                      | assimp (Blender 5 removed COLLADA)                                         | BSD-3                  | phase 2                       |
+| USD, USDZ                | OpenUSD or Blender                                                         | Apache-2.0             | phase 2                       |
+| STEP                     | OCCT                                                                       | LGPL-2.1               | phase 2                       |
+| RVT                      | Autodesk APS Model Derivative to IFC, then IfcConvert                      | paid                   | phase 2                       |
+| SKP                      | no Linux SDK; users export FBX, OBJ or USDZ                                | n/a                    | phase 2                       |
+| DWG, DXF                 | 2D underlays; 3D solids need ODA or APS                                    | paid                   | later                         |
+| E57, LAS, LAZ            | PDAL to COPC, separate point renderer                                      | BSD                    | later                         |
 
 gltfpack reads only `.gltf`, `.glb`, `.obj` and `.ply`. Every other format needs an importer before it.
 
