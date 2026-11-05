@@ -6,6 +6,7 @@ import { config } from 'dotenv'
 import { defineConfig, Plugin } from 'vite'
 import { resolveClerkJs } from './scripts/clerk-js'
 import { getMultiplayerServerURL } from './scripts/multiplayer-server-url'
+import { imageTo3dPlugin } from './scripts/vite-image-to-3d-plugin'
 import { routePreloadPlugin } from './scripts/vite-route-preload-plugin'
 import {
 	thumbnailRenderEntryPlugin,
@@ -141,6 +142,7 @@ export default defineConfig((env) => ({
 		clerkJsPlugin(),
 		localDevAuthPlugin(),
 		thumbnailScreenshotPlugin(),
+		imageTo3dPlugin(),
 		zodLocalePlugin(fileURLToPath(new URL('./scripts/zod-locales-shim.js', import.meta.url))),
 		react(),
 		// `ast: true` precompiles this app's own messages, which is why it doesn't need the ICU

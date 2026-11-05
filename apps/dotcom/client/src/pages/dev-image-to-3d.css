@@ -1,0 +1,90 @@
+.local-3d-panel {
+	margin: 12px;
+	padding: 12px 16px;
+	border: 1px solid var(--tl-color-muted-1);
+	border-radius: 8px;
+	background: var(--tl-color-panel);
+	color: var(--tl-color-text);
+	box-shadow: 0 2px 12px #0001;
+	font: 12px var(--tl-font-sans);
+	pointer-events: all;
+	max-width: calc(100vw - 32px);
+}
+
+.local-3d-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.local-3d-panel button,
+.local-3d-panel select,
+.local-3d-interact,
+.local-3d-world {
+	padding: 6px 10px;
+	font: inherit;
+	border: 1px solid var(--tl-color-muted-1);
+	border-radius: 5px;
+	background: var(--tl-color-panel);
+	color: inherit;
+	cursor: pointer;
+}
+
+.local-3d-agent {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding-left: 8px;
+	border-left: 1px solid var(--tl-color-muted-1);
+}
+
+.local-3d-panel button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.local-3d-panel p {
+	margin: 8px 0 0;
+}
+
+.local-3d-note {
+	color: var(--tl-color-text-3);
+}
+
+.local-3d-shape {
+	border: 1px solid var(--tl-color-muted-1);
+	border-radius: 6px;
+	background: var(--tl-color-panel);
+	overflow: hidden;
+}
+
+.local-3d-surface {
+	width: 100%;
+	height: 100%;
+}
+
+.local-3d-placeholder {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	padding: 20px;
+	font: 14px var(--tl-font-sans);
+	color: var(--tl-color-text-3);
+}
+
+.local-3d-interact {
+	position: absolute;
+	bottom: 10px;
+	right: 10px;
+	pointer-events: all;
+}
+
+.local-3d-world {
+	position: absolute;
+	bottom: 10px;
+	left: 10px;
+	pointer-events: all;
+	text-decoration: none;
+}

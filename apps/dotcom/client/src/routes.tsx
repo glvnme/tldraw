@@ -75,6 +75,7 @@ export function createAppRouter({
 		>
 			{includeDevRoutes && (
 				<>
+					<Route path="/dev/image-to-3d" lazy={() => import('./pages/dev-image-to-3d')} />
 					<Route
 						path="/dev/reset-local-state"
 						lazy={() => import('./pages/dev-reset-local-state')}
